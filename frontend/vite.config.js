@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'בטן או לב?',
-        short_name: 'בטן או לב',
+        name: 'GoalFriend',
+        short_name: 'GoalFriend',
         description: 'המשחק החברתי למונדיאל',
         theme_color: '#0f172a',
         background_color: '#0f172a',

@@ -14,7 +14,7 @@ export default function WelcomePage({ onRegister }) {
   return (
     <div className="welcome-page">
       <div className="welcome-emoji">⚽</div>
-      <h1 className="welcome-title">בטן או לב?</h1>
+      <h1 className="welcome-title">GoalFriend</h1>
       <p className="welcome-subtitle">
         המשחק החברתי של המונדיאל!
         <br />

@@ -15,20 +15,35 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('gut_heart_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) { localStorage.removeItem('gut_heart_user'); }
-    }
-    setLoading(false);
+    const init = async () => {
+      // Check if returning from Google redirect login
+      const redirectUser = await api.checkRedirectResult();
+      if (redirectUser) {
+        setUser(redirectUser);
+        localStorage.setItem('gut_heart_user', JSON.stringify(redirectUser));
+        setLoading(false);
+        return;
+      }
+      
+      const savedUser = localStorage.getItem('gut_heart_user');
+      if (savedUser) {
+        try {
+          setUser(JSON.parse(savedUser));
+        } catch (e) { localStorage.removeItem('gut_heart_user'); }
+      }
+      setLoading(false);
+    };
+    init();
   }, []);
 
   const handleLogin = async () => {
     try {
       const newUser = await api.loginWithGoogle();
-      setUser(newUser);
-      localStorage.setItem('gut_heart_user', JSON.stringify(newUser));
+      if (newUser) {
+        setUser(newUser);
+        localStorage.setItem('gut_heart_user', JSON.stringify(newUser));
+      }
+      // If null, redirect is happening — page will reload
     } catch (err) {
       console.error('Login failed:', err);
     }
@@ -77,7 +92,7 @@ function App() {
       <header className="app-header">
         <div className="app-logo">
           <span className="app-logo-icon">🎯</span>
-          <span className="app-logo-text">בטן או לב?</span>
+          <span className="app-logo-text">GoalFriend</span>
         </div>
         <button className="header-avatar" onClick={() => setCurrentPage('profile')} style={{ padding: user.avatar?.startsWith('http') ? 0 : undefined, overflow: 'hidden' }}>
           {renderAvatar(user.avatar)}

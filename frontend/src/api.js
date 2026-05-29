@@ -3,7 +3,7 @@ import {
   query, where, addDoc, arrayUnion
 } from 'firebase/firestore';
 
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, firestore } from './firebase';
 
 // Helper to handle Firebase errors gracefully
@@ -16,37 +16,52 @@ const tryFirebase = async (firebaseFunc, fallbackFunc) => {
   }
 };
 
+// Helper: ensure user doc exists in Firestore after Google auth
+const ensureUserInFirestore = async (user) => {
+  const userRef = doc(firestore, 'users', user.uid);
+  const snap = await getDoc(userRef);
+  let userData;
+  if (!snap.exists()) {
+    userData = { id: user.uid, name: user.displayName, avatar: user.photoURL || '😎', score: 0, streak: 0, correct: 0, total: 0, groups: [], createdAt: new Date().toISOString() };
+    await setDoc(userRef, userData);
+  } else {
+    userData = { id: user.uid, ...snap.data() };
+  }
+  return userData;
+};
+
 export const api = {
   loginWithGoogle: async () => {
-    return tryFirebase(
-      async () => {
-        const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const userId = user.uid;
-        
-        // Ensure user exists in Firestore
-        const userRef = doc(firestore, 'users', userId);
-        const snap = await getDoc(userRef);
-        let userData;
-        
-        if (!snap.exists()) {
-          userData = { id: userId, name: user.displayName, avatar: user.photoURL || '😎', score: 0, streak: 0, correct: 0, total: 0, groups: [] };
-          await setDoc(userRef, userData);
-        } else {
-          userData = snap.data();
-        }
-        
-        return userData;
-      },
-      async () => {
-        // Fallback for local testing if Firebase is still blocked
-        const userId = 'u_' + Math.random().toString(36).substr(2, 9);
-        const userData = { id: userId, name: 'משתמש גוגל (טסט)', avatar: '😎', score: 0, streak: 0, correct: 0, total: 0, groups: [] };
-        localStorage.setItem('gut_or_heart_user', JSON.stringify(userData));
-        return userData;
+    const provider = new GoogleAuthProvider();
+    try {
+      // Try popup first (works on most browsers)
+      const result = await signInWithPopup(auth, provider);
+      return await ensureUserInFirestore(result.user);
+    } catch (popupErr) {
+      if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user' || popupErr.message?.includes('Cross-Origin')) {
+        // Fallback to redirect
+        await signInWithRedirect(auth, provider);
+        return null; // Page will reload, handled by checkRedirectResult
       }
-    );
+      console.warn('Google login error:', popupErr.message);
+      // Local fallback
+      const userId = 'u_' + Math.random().toString(36).substr(2, 9);
+      const userData = { id: userId, name: 'משתמש (טסט)', avatar: '😎', score: 0, streak: 0, correct: 0, total: 0, groups: [] };
+      localStorage.setItem('gut_or_heart_user', JSON.stringify(userData));
+      return userData;
+    }
+  },
+
+  checkRedirectResult: async () => {
+    try {
+      const result = await getRedirectResult(auth);
+      if (result?.user) {
+        return await ensureUserInFirestore(result.user);
+      }
+    } catch (err) {
+      console.warn('Redirect result error:', err.message);
+    }
+    return null;
   },
 
   getUser: async (id) => {
@@ -65,131 +80,147 @@ export const api = {
   },
 
   getMatches: async () => {
+    const F = (code) => `https://flagcdn.com/w40/${code}.png`;
+
+    // Full World Cup 2026 Group Stage schedule
+    const ALL_MATCHES = [
+      { id: 'wc01', teamA: 'מקסיקו', teamB: 'דרום אפריקה', teamAFlag: F('mx'), teamBFlag: F('za'), date: '2026-06-11T22:00', group: 'A' },
+      { id: 'wc02', teamA: 'קוריאה הדרומית', teamB: 'צ\'כיה', teamAFlag: F('kr'), teamBFlag: F('cz'), date: '2026-06-12T05:00', group: 'A' },
+      { id: 'wc03', teamA: 'קנדה', teamB: 'בוסניה', teamAFlag: F('ca'), teamBFlag: F('ba'), date: '2026-06-12T22:00', group: 'B' },
+      { id: 'wc04', teamA: 'ארה"ב', teamB: 'פרגוואי', teamAFlag: F('us'), teamBFlag: F('py'), date: '2026-06-13T04:00', group: 'D' },
+      { id: 'wc05', teamA: 'קטאר', teamB: 'שוויץ', teamAFlag: F('qa'), teamBFlag: F('ch'), date: '2026-06-13T22:00', group: 'B' },
+      { id: 'wc06', teamA: 'ברזיל', teamB: 'מרוקו', teamAFlag: F('br'), teamBFlag: F('ma'), date: '2026-06-14T01:00', group: 'C' },
+      { id: 'wc07', teamA: 'האיטי', teamB: 'סקוטלנד', teamAFlag: F('ht'), teamBFlag: F('gb-sct'), date: '2026-06-14T04:00', group: 'C' },
+      { id: 'wc08', teamA: 'ארגנטינה', teamB: 'אורוגוואי', teamAFlag: F('ar'), teamBFlag: F('uy'), date: '2026-06-14T19:00', group: 'E' },
+      { id: 'wc09', teamA: 'צרפת', teamB: 'קולומביה', teamAFlag: F('fr'), teamBFlag: F('co'), date: '2026-06-14T22:00', group: 'D' },
+      { id: 'wc10', teamA: 'ספרד', teamB: 'אקוודור', teamAFlag: F('es'), teamBFlag: F('ec'), date: '2026-06-15T01:00', group: 'E' },
+      { id: 'wc11', teamA: 'גרמניה', teamB: 'יפן', teamAFlag: F('de'), teamBFlag: F('jp'), date: '2026-06-15T19:00', group: 'F' },
+      { id: 'wc12', teamA: 'פורטוגל', teamB: 'סנגל', teamAFlag: F('pt'), teamBFlag: F('sn'), date: '2026-06-15T22:00', group: 'F' },
+      { id: 'wc13', teamA: 'אנגליה', teamB: 'ניגריה', teamAFlag: F('gb-eng'), teamBFlag: F('ng'), date: '2026-06-16T01:00', group: 'G' },
+      { id: 'wc14', teamA: 'הולנד', teamB: 'קרואטיה', teamAFlag: F('nl'), teamBFlag: F('hr'), date: '2026-06-16T19:00', group: 'G' },
+      { id: 'wc15', teamA: 'בלגיה', teamB: 'דנמרק', teamAFlag: F('be'), teamBFlag: F('dk'), date: '2026-06-16T22:00', group: 'H' },
+      { id: 'wc16', teamA: 'איטליה', teamB: 'איראן', teamAFlag: F('it'), teamBFlag: F('ir'), date: '2026-06-17T01:00', group: 'H' },
+      { id: 'wc17', teamA: 'מקסיקו', teamB: 'צ\'כיה', teamAFlag: F('mx'), teamBFlag: F('cz'), date: '2026-06-17T19:00', group: 'A' },
+      { id: 'wc18', teamA: 'דרום אפריקה', teamB: 'קוריאה הדרומית', teamAFlag: F('za'), teamBFlag: F('kr'), date: '2026-06-17T22:00', group: 'A' },
+      { id: 'wc19', teamA: 'קנדה', teamB: 'שוויץ', teamAFlag: F('ca'), teamBFlag: F('ch'), date: '2026-06-18T01:00', group: 'B' },
+      { id: 'wc20', teamA: 'בוסניה', teamB: 'קטאר', teamAFlag: F('ba'), teamBFlag: F('qa'), date: '2026-06-18T19:00', group: 'B' },
+      { id: 'wc21', teamA: 'ברזיל', teamB: 'סקוטלנד', teamAFlag: F('br'), teamBFlag: F('gb-sct'), date: '2026-06-18T22:00', group: 'C' },
+      { id: 'wc22', teamA: 'מרוקו', teamB: 'האיטי', teamAFlag: F('ma'), teamBFlag: F('ht'), date: '2026-06-19T01:00', group: 'C' },
+      { id: 'wc23', teamA: 'ארה"ב', teamB: 'קולומביה', teamAFlag: F('us'), teamBFlag: F('co'), date: '2026-06-19T19:00', group: 'D' },
+      { id: 'wc24', teamA: 'פרגוואי', teamB: 'צרפת', teamAFlag: F('py'), teamBFlag: F('fr'), date: '2026-06-19T22:00', group: 'D' },
+    ];
+
+    const getNext6Matches = (sourceMatches) => {
+      const now = new Date();
+      const upcoming = sourceMatches.filter(m => !m.date || new Date(m.date) > now || m.status === 'upcoming');
+      const toShow = upcoming.length >= 6 ? upcoming.slice(0, 6) : sourceMatches.slice(0, 6);
+
+      const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+      const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+      
+      return toShow.map(m => {
+        if (!m.date) return m;
+        const d = new Date(m.date);
+        const dayDiff = Math.floor((d - now) / (1000 * 60 * 60 * 24));
+        let timeLabel;
+        if (dayDiff <= 0) timeLabel = `היום, ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        else if (dayDiff === 1) timeLabel = `מחר, ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        else timeLabel = `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]}, ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        return { ...m, time: timeLabel, status: 'upcoming' };
+      });
+    };
+
     return tryFirebase(
       async () => {
         const snap = await getDocs(collection(firestore, 'matches'));
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (snap.empty) {
+          return getNext6Matches(ALL_MATCHES);
+        }
+        const matches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return getNext6Matches(matches);
       },
       () => {
-        const NATIONS = {
-          'ארגנטינה': 'https://flagcdn.com/w40/ar.png',
-          'ברזיל': 'https://flagcdn.com/w40/br.png',
-          'צרפת': 'https://flagcdn.com/w40/fr.png',
-          'אנגליה': 'https://flagcdn.com/w40/gb-eng.png',
-          'ספרד': 'https://flagcdn.com/w40/es.png',
-          'גרמניה': 'https://flagcdn.com/w40/de.png',
-          'פורטוגל': 'https://flagcdn.com/w40/pt.png',
-          'איטליה': 'https://flagcdn.com/w40/it.png',
-          'הולנד': 'https://flagcdn.com/w40/nl.png',
-          'בלגיה': 'https://flagcdn.com/w40/be.png',
-          'קרואטיה': 'https://flagcdn.com/w40/hr.png',
-          'אורוגוואי': 'https://flagcdn.com/w40/uy.png',
-          'קולומביה': 'https://flagcdn.com/w40/co.png',
-          'מקסיקו': 'https://flagcdn.com/w40/mx.png',
-          'ארה"ב': 'https://flagcdn.com/w40/us.png',
-          'קנדה': 'https://flagcdn.com/w40/ca.png',
-          'קוריאה הדרומית': 'https://flagcdn.com/w40/kr.png',
-          'יפן': 'https://flagcdn.com/w40/jp.png',
-          'איראן': 'https://flagcdn.com/w40/ir.png',
-          'ערב הסעודית': 'https://flagcdn.com/w40/sa.png',
-          'סנגל': 'https://flagcdn.com/w40/sn.png',
-          'מרוקו': 'https://flagcdn.com/w40/ma.png',
-          'ניגריה': 'https://flagcdn.com/w40/ng.png',
-          'מצרים': 'https://flagcdn.com/w40/eg.png',
-          'קמרון': 'https://flagcdn.com/w40/cm.png',
-          'חוף השנהב': 'https://flagcdn.com/w40/ci.png',
-          'אוסטרליה': 'https://flagcdn.com/w40/au.png',
-          'שוויץ': 'https://flagcdn.com/w40/ch.png',
-          'דנמרק': 'https://flagcdn.com/w40/dk.png',
-          'שבדיה': 'https://flagcdn.com/w40/se.png',
-          'פולין': 'https://flagcdn.com/w40/pl.png',
-          'סרביה': 'https://flagcdn.com/w40/rs.png',
-          'ווילס': 'https://flagcdn.com/w40/gb-wls.png',
-          'אקוודור': 'https://flagcdn.com/w40/ec.png',
-          'פרו': 'https://flagcdn.com/w40/pe.png',
-          'צ\'ילה': 'https://flagcdn.com/w40/cl.png',
-          'פרגוואי': 'https://flagcdn.com/w40/py.png',
-          'אלג\'יריה': 'https://flagcdn.com/w40/dz.png',
-          'תוניסיה': 'https://flagcdn.com/w40/tn.png',
-          'מאלי': 'https://flagcdn.com/w40/ml.png',
-          'גאנה': 'https://flagcdn.com/w40/gh.png',
-          'ניו זילנד': 'https://flagcdn.com/w40/nz.png',
-          'קוסטה ריקה': 'https://flagcdn.com/w40/cr.png',
-          'פנמה': 'https://flagcdn.com/w40/pa.png',
-          'ג\'מייקה': 'https://flagcdn.com/w40/jm.png',
-          'דרום אפריקה': 'https://flagcdn.com/w40/za.png',
-          'קטאר': 'https://flagcdn.com/w40/qa.png',
-          'סקוטלנד': 'https://flagcdn.com/w40/gb-sct.png',
-          'צ\'כיה': 'https://flagcdn.com/w40/cz.png',
-          'בוסניה': 'https://flagcdn.com/w40/ba.png',
-          'האיטי': 'https://flagcdn.com/w40/ht.png'
-        };
-
-        return [
-          { id: 'm1', teamA: 'מקסיקו', teamB: 'דרום אפריקה', teamAFlag: NATIONS['מקסיקו'], teamBFlag: NATIONS['דרום אפריקה'], time: '11 יוני, 22:00', status: 'upcoming' },
-          { id: 'm2', teamA: 'קוריאה הדרומית', teamB: 'צ\'כיה', teamAFlag: NATIONS['קוריאה הדרומית'], teamBFlag: NATIONS['צ\'כיה'], time: '12 יוני, 05:00', status: 'upcoming' },
-          { id: 'm3', teamA: 'קנדה', teamB: 'בוסניה', teamAFlag: NATIONS['קנדה'], teamBFlag: NATIONS['בוסניה'], time: '12 יוני, 22:00', status: 'upcoming' },
-          { id: 'm4', teamA: 'ארה"ב', teamB: 'פרגוואי', teamAFlag: NATIONS['ארה"ב'], teamBFlag: NATIONS['פרגוואי'], time: '13 יוני, 04:00', status: 'upcoming' },
-          { id: 'm5', teamA: 'קטאר', teamB: 'שוויץ', teamAFlag: NATIONS['קטאר'], teamBFlag: NATIONS['שוויץ'], time: '13 יוני, 22:00', status: 'upcoming' },
-          { id: 'm6', teamA: 'ברזיל', teamB: 'מרוקו', teamAFlag: NATIONS['ברזיל'], teamBFlag: NATIONS['מרוקו'], time: '14 יוני, 01:00', status: 'upcoming' },
-          { id: 'm7', teamA: 'האיטי', teamB: 'סקוטלנד', teamAFlag: NATIONS['האיטי'], teamBFlag: NATIONS['סקוטלנד'], time: '14 יוני, 04:00', status: 'upcoming' }
-        ];
+        return getNext6Matches(ALL_MATCHES);
       }
     );
   },
 
   getQuestions: async (matchId) => {
+    const generateQuestions = () => {
+      const ALL_MATCHES = [
+        { id: 'wc01', teamA: 'מקסיקו', teamB: 'דרום אפריקה' },
+        { id: 'wc02', teamA: 'קוריאה הדרומית', teamB: 'צ\'כיה' },
+        { id: 'wc03', teamA: 'קנדה', teamB: 'בוסניה' },
+        { id: 'wc04', teamA: 'ארה"ב', teamB: 'פרגוואי' },
+        { id: 'wc05', teamA: 'קטאר', teamB: 'שוויץ' },
+        { id: 'wc06', teamA: 'ברזיל', teamB: 'מרוקו' },
+        { id: 'wc07', teamA: 'האיטי', teamB: 'סקוטלנד' },
+        { id: 'wc08', teamA: 'ארגנטינה', teamB: 'אורוגוואי' },
+        { id: 'wc09', teamA: 'צרפת', teamB: 'קולומביה' },
+        { id: 'wc10', teamA: 'ספרד', teamB: 'אקוודור' },
+        { id: 'wc11', teamA: 'גרמניה', teamB: 'יפן' },
+        { id: 'wc12', teamA: 'פורטוגל', teamB: 'סנגל' },
+        { id: 'wc13', teamA: 'אנגליה', teamB: 'ניגריה' },
+        { id: 'wc14', teamA: 'הולנד', teamB: 'קרואטיה' },
+        { id: 'wc15', teamA: 'בלגיה', teamB: 'דנמרק' },
+        { id: 'wc16', teamA: 'איטליה', teamB: 'איראן' },
+        { id: 'wc17', teamA: 'מקסיקו', teamB: 'צ\'כיה' },
+        { id: 'wc18', teamA: 'דרום אפריקה', teamB: 'קוריאה הדרומית' },
+        { id: 'wc19', teamA: 'קנדה', teamB: 'שוויץ' },
+        { id: 'wc20', teamA: 'בוסניה', teamB: 'קטאר' },
+        { id: 'wc21', teamA: 'ברזיל', teamB: 'סקוטלנד' },
+        { id: 'wc22', teamA: 'מרוקו', teamB: 'האיטי' },
+        { id: 'wc23', teamA: 'ארה"ב', teamB: 'קולומביה' },
+        { id: 'wc24', teamA: 'פרגוואי', teamB: 'צרפת' },
+      ];
+      const m = ALL_MATCHES.find(x => x.id === matchId) || ALL_MATCHES[0];
+      const ta = m.teamA;
+      const tb = m.teamB;
+
+      const winnerQ = { id: `${matchId}_q_win`, text: 'מי תנצח את המשחק בסוף?', category: 'winner', points: 20, emoji: '🏆', optionA: ta, optionB: tb };
+
+      const pool = [
+        { id: `${matchId}_q1`, text: 'מי תכבוש ראשונה?', category: 'goals', points: 10, emoji: '⚽', optionA: ta, optionB: tb },
+        { id: `${matchId}_q2`, text: 'האם יהיו מעל 2.5 שערים במשחק?', category: 'goals', points: 10, emoji: '🔥', optionA: 'ברור!', optionB: 'ממש לא' },
+        { id: `${matchId}_q3`, text: 'האם שופט ה-VAR יפסול שער?', category: 'drama', points: 15, emoji: '📺', optionA: 'כן, בדוק', optionB: 'המשחק יזרום' },
+        { id: `${matchId}_q4`, text: 'איזה קהל יעשה יותר רעש?', category: 'fans', points: 5, emoji: '🏟️', optionA: `האוהדים של ${ta}`, optionB: `האוהדים של ${tb}` },
+        { id: `${matchId}_q5`, text: 'מי תספוג יותר כרטיסים צהובים?', category: 'cards', points: 10, emoji: '🟨', optionA: ta, optionB: tb },
+        { id: `${matchId}_q6`, text: 'האם נראה כרטיס אדום במשחק?', category: 'cards', points: 20, emoji: '🟥', optionA: 'כן, משחק אגרסיבי', optionB: 'לא יהיה אדום' },
+        { id: `${matchId}_q7`, text: 'מי תרוץ יותר קילומטרים?', category: 'stats', points: 10, emoji: '🏃', optionA: ta, optionB: tb },
+        { id: `${matchId}_q8`, text: 'האם יובקע שער ב-15 הדקות הראשונות?', category: 'time', points: 15, emoji: '⏱️', optionA: 'כן, פתיחה סוערת', optionB: 'לא, יתחילו רגוע' },
+        { id: `${matchId}_q9`, text: 'האם נראה פנדל מוחמץ?', category: 'drama', points: 25, emoji: '🥅', optionA: 'כן!', optionB: 'אין סיכוי' },
+        { id: `${matchId}_q10`, text: 'איזו קבוצה תיראה יותר לחוצה במחצית הראשונה?', category: 'gut', points: 10, emoji: '🧠', optionA: ta, optionB: tb },
+        { id: `${matchId}_q11`, text: 'מי המאמן שיתעצבן ראשון על השופט?', category: 'gut', points: 10, emoji: '😤', optionA: `המאמן של ${ta}`, optionB: `המאמן של ${tb}` },
+        { id: `${matchId}_q12`, text: 'האם שחקן מחליף יכבוש שער?', category: 'players', points: 15, emoji: '🔄', optionA: 'כן, חילוף מנצח', optionB: 'לא' },
+        { id: `${matchId}_q13`, text: 'האם יובקע שער בתוספת הזמן (דקה 90+)?', category: 'drama', points: 20, emoji: '⏳', optionA: 'דרמה בסיום!', optionB: 'לא' },
+        { id: `${matchId}_q14`, text: 'מי תחזיק יותר בכדור (פוזשן)?', category: 'stats', points: 10, emoji: '📊', optionA: ta, optionB: tb },
+        { id: `${matchId}_q15`, text: 'האם נראה שער בבעיטה חופשית ישירה?', category: 'magic', points: 20, emoji: '✨', optionA: 'שער לחיבורים!', optionB: 'לא' },
+        { id: `${matchId}_q16`, text: 'מי תבצע יותר עבירות?', category: 'cards', points: 10, emoji: '⚔️', optionA: ta, optionB: tb },
+        { id: `${matchId}_q17`, text: 'האם המשחק יסתיים בתיקו?', category: 'winner', points: 15, emoji: '🤝', optionA: 'כן, יגמר שוויון', optionB: 'תהיה הכרעה' }
+      ];
+
+      // Seed random choice based on matchId to keep questions stable on reload
+      const hash = parseInt(matchId.replace(/\D/g, '') || '1');
+      const selected = [];
+      for (let i = 0; i < 4; i++) {
+        const index = (hash * 7 + i * 5) % pool.length;
+        selected.push(pool[index]);
+      }
+
+      return [winnerQ, ...selected];
+    };
+
     return tryFirebase(
       async () => {
         const q = query(collection(firestore, 'questions'), where('matchId', '==', matchId));
         const snap = await getDocs(q);
+        if (snap.empty) {
+          return generateQuestions();
+        }
         return snap.docs.map(d => ({ id: d.id, ...d.data() }));
       },
       () => {
-        const matches = [
-          { id: 'm1', teamA: 'מקסיקו', teamB: 'דרום אפריקה' },
-          { id: 'm2', teamA: 'קוריאה הדרומית', teamB: 'צ\'כיה' },
-          { id: 'm3', teamA: 'קנדה', teamB: 'בוסניה' },
-          { id: 'm4', teamA: 'ארה"ב', teamB: 'פרגוואי' },
-          { id: 'm5', teamA: 'קטאר', teamB: 'שוויץ' },
-          { id: 'm6', teamA: 'ברזיל', teamB: 'מרוקו' },
-          { id: 'm7', teamA: 'האיטי', teamB: 'סקוטלנד' }
-        ];
-        const m = matches.find(x => x.id === matchId) || matches[0];
-        const ta = m.teamA;
-        const tb = m.teamB;
-
-        const winnerQ = { id: `${matchId}_q_win`, text: 'מי תנצח את המשחק בסוף?', category: 'winner', points: 20, emoji: '🏆', optionA: ta, optionB: tb };
-
-        const pool = [
-          { id: `${matchId}_q1`, text: 'מי תכבוש ראשונה?', category: 'goals', points: 10, emoji: '⚽', optionA: ta, optionB: tb },
-          { id: `${matchId}_q2`, text: 'האם יהיו מעל 2.5 שערים במשחק?', category: 'goals', points: 10, emoji: '🔥', optionA: 'ברור!', optionB: 'ממש לא' },
-          { id: `${matchId}_q3`, text: 'האם שופט ה-VAR יפסול שער?', category: 'drama', points: 15, emoji: '📺', optionA: 'כן, בדוק', optionB: 'המשחק יזרום' },
-          { id: `${matchId}_q4`, text: 'איזה קהל יעשה יותר רעש?', category: 'fans', points: 5, emoji: '🏟️', optionA: `האוהדים של ${ta}`, optionB: `האוהדים של ${tb}` },
-          { id: `${matchId}_q5`, text: 'מי תספוג יותר כרטיסים צהובים?', category: 'cards', points: 10, emoji: '🟨', optionA: ta, optionB: tb },
-          { id: `${matchId}_q6`, text: 'האם נראה כרטיס אדום במשחק?', category: 'cards', points: 20, emoji: '🟥', optionA: 'כן, משחק אגרסיבי', optionB: 'לא יהיה אדום' },
-          { id: `${matchId}_q7`, text: 'מי תרוץ יותר קילומטרים?', category: 'stats', points: 10, emoji: '🏃', optionA: ta, optionB: tb },
-          { id: `${matchId}_q8`, text: 'האם יובקע שער ב-15 הדקות הראשונות?', category: 'time', points: 15, emoji: '⏱️', optionA: 'כן, פתיחה סוערת', optionB: 'לא, יתחילו רגוע' },
-          { id: `${matchId}_q9`, text: 'האם נראה פנדל מוחמץ?', category: 'drama', points: 25, emoji: '🥅', optionA: 'כן!', optionB: 'אין סיכוי' },
-          { id: `${matchId}_q10`, text: 'איזו קבוצה תיראה יותר לחוצה במחצית הראשונה?', category: 'gut', points: 10, emoji: '🧠', optionA: ta, optionB: tb },
-          { id: `${matchId}_q11`, text: 'מי המאמן שיתעצבן ראשון על השופט?', category: 'gut', points: 10, emoji: '😤', optionA: `המאמן של ${ta}`, optionB: `המאמן של ${tb}` },
-          { id: `${matchId}_q12`, text: 'האם שחקן מחליף יכבוש שער?', category: 'players', points: 15, emoji: '🔄', optionA: 'כן, חילוף מנצח', optionB: 'לא' },
-          { id: `${matchId}_q13`, text: 'האם יובקע שער בתוספת הזמן (דקה 90+)?', category: 'drama', points: 20, emoji: '⏳', optionA: 'דרמה בסיום!', optionB: 'לא' },
-          { id: `${matchId}_q14`, text: 'מי תחזיק יותר בכדור (פוזשן)?', category: 'stats', points: 10, emoji: '📊', optionA: ta, optionB: tb },
-          { id: `${matchId}_q15`, text: 'האם נראה שער בבעיטה חופשית ישירה?', category: 'magic', points: 20, emoji: '✨', optionA: 'שער לחיבורים!', optionB: 'לא' },
-          { id: `${matchId}_q16`, text: 'מי תבצע יותר עבירות?', category: 'cards', points: 10, emoji: '⚔️', optionA: ta, optionB: tb },
-          { id: `${matchId}_q17`, text: 'האם המשחק יסתיים בתיקו?', category: 'winner', points: 15, emoji: '🤝', optionA: 'כן, יגמר שוויון', optionB: 'תהיה הכרעה' }
-        ];
-
-        // Seed random choice based on matchId to keep questions stable on reload
-        const hash = parseInt(matchId.replace(/\D/g, '') || '1');
-        const selected = [];
-        for (let i = 0; i < 4; i++) {
-          const index = (hash * 7 + i * 5) % pool.length;
-          selected.push(pool[index]);
-        }
-
-        return [winnerQ, ...selected];
+        return generateQuestions();
       }
     );
   },
@@ -251,20 +282,18 @@ export const api = {
     const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     const groupData = { name, creatorId, poolAmount, emoji, inviteCode, members: [creatorId] };
     
-    return tryFirebase(
-      async () => {
-        const groupRef = await addDoc(collection(firestore, 'groups'), groupData);
-        await updateDoc(doc(firestore, 'users', creatorId), { groups: arrayUnion(groupRef.id) });
-        return { id: groupRef.id, inviteCode };
-      },
-      () => {
-        groupData.id = 'g_' + inviteCode;
-        const groups = JSON.parse(localStorage.getItem('gut_groups') || '[]');
-        groups.push(groupData);
-        localStorage.setItem('gut_groups', JSON.stringify(groups));
-        return { id: groupData.id, inviteCode };
-      }
-    );
+    // Ensure user doc exists first, then save group
+    const userRef = doc(firestore, 'users', creatorId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      // Create user doc in Firestore from localStorage data
+      const localUser = JSON.parse(localStorage.getItem('gut_or_heart_user') || localStorage.getItem('gut_heart_user') || '{}');
+      await setDoc(userRef, { id: creatorId, name: localUser.name || 'משתמש', avatar: localUser.avatar || '😎', score: 0, streak: 0, correct: 0, total: 0, groups: [] });
+    }
+    
+    const groupRef = await addDoc(collection(firestore, 'groups'), groupData);
+    await setDoc(userRef, { groups: arrayUnion(groupRef.id) }, { merge: true });
+    return { id: groupRef.id, inviteCode };
   },
 
   getUserGroups: async (userId) => {
@@ -290,15 +319,19 @@ export const api = {
       async () => {
         const q = query(collection(firestore, 'groups'), where('inviteCode', '==', inviteCode.toUpperCase()));
         const snap = await getDocs(q);
-        if (snap.empty) throw new Error('Invalid code');
-        await updateDoc(doc(firestore, 'users', userId), { groups: arrayUnion(snap.docs[0].id) });
-        return { success: true };
+        if (snap.empty) throw new Error('הקוד לא נמצא. נסה שוב.');
+        const groupDoc = snap.docs[0];
+        // Add user to group members
+        await setDoc(groupDoc.ref, { members: arrayUnion(userId) }, { merge: true });
+        // Add group to user's groups list
+        await setDoc(doc(firestore, 'users', userId), { groups: arrayUnion(groupDoc.id) }, { merge: true });
+        return { id: groupDoc.id, success: true };
       },
       () => {
         const groups = JSON.parse(localStorage.getItem('gut_groups') || '[]');
         const g = groups.find(g => g.inviteCode === inviteCode.toUpperCase());
-        if (!g) throw new Error('Invalid code');
-        return { success: true };
+        if (!g) throw new Error('הקוד לא נמצא. נסה שוב.');
+        return { id: g.id, success: true };
       }
     );
   },
@@ -336,14 +369,32 @@ export const api = {
     );
   },
 
-  getStats: async (userId) => {
+  getGlobalLeaderboard: async () => {
+    return tryFirebase(
+      async () => {
+        const snap = await getDocs(collection(firestore, 'users'));
+        const users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return users.sort((a, b) => (b.score || 0) - (a.score || 0));
+      },
+      () => {
+        const localUser = JSON.parse(localStorage.getItem('gut_or_heart_user') || localStorage.getItem('gut_heart_user') || '{}');
+        return [localUser];
+      }
+    );
+  },
 
+  getStats: async (userId) => {
     return tryFirebase(
       async () => {
         const user = await api.getUser(userId);
-        return { rank: 1, score: user.score || 0, hitRate: 85, nextPrize: 'חולצת מונדיאל', activeGroups: 1 };
+        const allUsers = await api.getGlobalLeaderboard();
+        const rank = allUsers.findIndex(u => u.id === userId) + 1;
+        const totalPredictions = user.total || 0;
+        const correctPredictions = user.correct || 0;
+        const accuracy = totalPredictions > 0 ? Math.round((correctPredictions / totalPredictions) * 100) : 0;
+        return { rank, totalScore: user.score || 0, accuracy, streak: user.streak || 0, totalPredictions };
       },
-      () => ({ rank: 1, score: 0, hitRate: 100, nextPrize: 'חולצת מונדיאל', activeGroups: 1 })
+      () => ({ rank: 1, totalScore: 0, accuracy: 0, streak: 0, totalPredictions: 0 })
     );
   }
 };

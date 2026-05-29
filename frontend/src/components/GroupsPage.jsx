@@ -8,6 +8,7 @@ export default function GroupsPage({ user, onOpenGroup }) {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
 
   // Form states
   const [createName, setCreateName] = useState('');
@@ -20,9 +21,13 @@ export default function GroupsPage({ user, onOpenGroup }) {
 
   const fetchGroups = () => {
     setLoading(true);
-    api.getUserGroups(user.id)
-      .then(res => {
-        setGroups(res);
+    Promise.all([
+      api.getUserGroups(user.id),
+      api.getGlobalLeaderboard()
+    ])
+      .then(([groupsRes, leaderboardRes]) => {
+        setGroups(groupsRes);
+        setGlobalLeaderboard(leaderboardRes);
         setLoading(false);
       })
       .catch(err => {
@@ -82,8 +87,52 @@ export default function GroupsPage({ user, onOpenGroup }) {
     }
   };
 
+  const renderAvatar = (avatar) => {
+    if (!avatar) return '😎';
+    if (typeof avatar === 'string' && avatar.startsWith('http')) {
+      return <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />;
+    }
+    return avatar;
+  };
+
   return (
     <div className="groups-page animate-slide-in">
+      {/* GLOBAL LEADERBOARD */}
+      <div className="card" style={{ marginBottom: 20, padding: '16px 12px', background: 'linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%)', color: 'white', borderRadius: 16 }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 800, textAlign: 'center' }}>
+          🌍 טבלת המובילים הגלובלית
+        </h3>
+        {globalLeaderboard.length === 0 ? (
+          <p style={{ textAlign: 'center', opacity: 0.8, fontSize: 14 }}>אין משתמשים עדיין</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {globalLeaderboard.slice(0, 10).map((member, index) => {
+              const memberId = member.id || `g_${index}`;
+              const isMe = memberId === user.id;
+              return (
+                <div key={memberId} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  background: isMe ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                  borderRadius: 10, padding: '8px 12px',
+                  border: isMe ? '2px solid rgba(255,255,255,0.5)' : 'none',
+                }}>
+                  <span style={{ fontWeight: 800, fontSize: 14, minWidth: 28 }}>
+                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                  </span>
+                  <span style={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: 'rgba(255,255,255,0.2)', overflow: 'hidden', flexShrink: 0 }}>
+                    {renderAvatar(member.avatar)}
+                  </span>
+                  <span style={{ flex: 1, fontWeight: isMe ? 800 : 600, fontSize: 14 }}>
+                    {member.name || 'משתמש'} {isMe && '(אתה)'}
+                  </span>
+                  <span style={{ fontWeight: 800, fontSize: 14 }}>{member.score || 0} נק׳</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 className="section-title" style={{ margin: 0 }}>הקבוצות שלי 👥</h2>
         <div style={{ display: 'flex', gap: 8 }}>
