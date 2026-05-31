@@ -377,6 +377,8 @@ export const api = {
             usersA: arrayRemove(userId)
           });
         }
+        // Recalculate stats chronologically to capture points if the question is already resolved!
+        await api.recalculateUserStats(userId);
         return { success: true };
       },
       () => {
@@ -399,6 +401,7 @@ export const api = {
           q.usersB = uB;
           allPreds[qIndex] = q;
           localStorage.setItem('gut_preds_v2', JSON.stringify(allPreds));
+          api.recalculateUserStatsLocal(userId);
         }
         return { success: true };
       }
