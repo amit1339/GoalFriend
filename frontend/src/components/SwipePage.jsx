@@ -72,10 +72,6 @@ export default function SwipePage({ user }) {
             className={`match-chip ${selectedMatch?.id === match.id ? 'active' : ''}`}
             onClick={() => setSelectedMatch(match)}
           >
-            <span className="flags" style={{ display: 'flex', gap: 4, marginRight: 8 }}>
-              <img src={match.teamAFlag} alt={match.teamA} style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2, border: '1px solid rgba(0,0,0,0.1)' }} />
-              <img src={match.teamBFlag} alt={match.teamB} style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2, border: '1px solid rgba(0,0,0,0.1)' }} />
-            </span>
             {match.teamA} - {match.teamB}
           </button>
         ))}
@@ -83,12 +79,12 @@ export default function SwipePage({ user }) {
 
       {/* Progress bar */}
       {questions.length > 0 && (
-        <div style={{ height: 4, borderRadius: 2, background: 'rgba(108,92,231,0.1)', marginBottom: 16, overflow: 'hidden' }}>
+        <div style={{ height: 5, borderRadius: 3, background: 'rgba(255, 255, 255, 0.06)', marginBottom: 18, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)' }}>
           <div style={{
             height: '100%',
             width: `${progress}%`,
-            background: 'linear-gradient(90deg, #6C5CE7, #A29BFE)',
-            borderRadius: 2,
+            background: 'linear-gradient(90deg, #8b5cf6, #ec4899)',
+            borderRadius: 3,
             transition: 'width 0.4s ease',
           }} />
         </div>
@@ -111,35 +107,53 @@ export default function SwipePage({ user }) {
             <div className="card-match-info" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               {selectedMatch && (
                 <>
-                  <img src={selectedMatch.teamAFlag} alt={selectedMatch.teamA} style={{ width: 20, height: 14, borderRadius: 2, border: '1px solid rgba(0,0,0,0.1)' }} />
                   <span>{selectedMatch.teamA}</span>
                   <span style={{ opacity: 0.5, margin: '0 4px' }}>vs</span>
                   <span>{selectedMatch.teamB}</span>
-                  <img src={selectedMatch.teamBFlag} alt={selectedMatch.teamB} style={{ width: 20, height: 14, borderRadius: 2, border: '1px solid rgba(0,0,0,0.1)' }} />
                 </>
               )}
             </div>
 
-            <div className="swipe-options">
-              <button
-                className="swipe-btn option-a"
-                onClick={() => handleAnswer('A')}
+            {selectedMatch && new Date() >= new Date(selectedMatch.startTime) ? (
+              <div 
+                className="not-more-bets-msg" 
+                style={{ 
+                  width: '100%',
+                  padding: '16px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'rgba(244, 63, 94, 0.1)',
+                  border: '1px solid rgba(244, 63, 94, 0.3)',
+                  color: '#fb7185',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  textAlign: 'center',
+                  lineHeight: '1.5'
+                }}
               >
-                {currentQuestion.optionA}
-              </button>
-              <button
-                className="swipe-btn option-b"
-                onClick={() => handleAnswer('B')}
-              >
-                {currentQuestion.optionB}
-              </button>
-            </div>
+                not more bets, המשחק התחיל ולכן לא ניתן לנחש עוד
+              </div>
+            ) : (
+              <div className="swipe-options">
+                <button
+                  className="swipe-btn option-a"
+                  onClick={() => handleAnswer('A')}
+                >
+                  {currentQuestion.optionA}
+                </button>
+                <button
+                  className="swipe-btn option-b"
+                  onClick={() => handleAnswer('B')}
+                >
+                  {currentQuestion.optionB}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Remaining counter */}
           <div style={{
-            textAlign: 'center', marginTop: 12,
-            fontSize: 13, color: '#636E72', fontWeight: 600,
+            textAlign: 'center', marginTop: 14,
+            fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600,
           }}>
             {currentIndex + 1} / {questions.length} שאלות
           </div>

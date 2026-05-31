@@ -34,6 +34,76 @@ const ensureUserInFirestore = async (user) => {
   return userData;
 };
 
+const ALL_MATCHES = [
+  { id: 'wc01', teamA: 'מקסיקו 🇲🇽', teamB: 'דרום אפריקה 🇿🇦', startTime: '2026-06-11T22:00', isvisable: true, predictions: ['wc01_q1', 'wc01_q2', 'wc01_q3', 'wc01_q4', 'wc01_q5', 'wc01_q6'] },
+  { id: 'wc02', teamA: 'קוריאה הדרומית 🇰🇷', teamB: 'צ\'כיה 🇨🇿', startTime: '2026-06-12T05:00', isvisable: true, predictions: ['wc02_q1', 'wc02_q2', 'wc02_q3', 'wc02_q4', 'wc02_q5', 'wc02_q6'] },
+  { id: 'wc03', teamA: 'קנדה 🇨🇦', teamB: 'בוסניה 🇧🇦', startTime: '2026-06-12T22:00', isvisable: true, predictions: ['wc03_q1', 'wc03_q2', 'wc03_q3', 'wc03_q4', 'wc03_q5', 'wc03_q6'] },
+  { id: 'wc04', teamA: 'ארה"ב 🇺🇸', teamB: 'פרגוואי 🇵🇾', startTime: '2026-06-13T04:00', isvisable: true, predictions: ['wc04_q1', 'wc04_q2', 'wc04_q3', 'wc04_q4', 'wc04_q5', 'wc04_q6'] },
+  { id: 'wc05', teamA: 'קטאר 🇶🇦', teamB: 'שוויץ 🇨🇭', startTime: '2026-06-13T22:00', isvisable: true, predictions: ['wc05_q1', 'wc05_q2', 'wc05_q3', 'wc05_q4', 'wc05_q5', 'wc05_q6'] },
+  { id: 'wc06', teamA: 'ברזיל 🇧🇷', teamB: 'מרוקו 🇲🇦', startTime: '2026-06-14T01:00', isvisable: true, predictions: ['wc06_q1', 'wc06_q2', 'wc06_q3', 'wc06_q4', 'wc06_q5', 'wc06_q6'] },
+  { id: 'wc07', teamA: 'האיטי 🇭🇹', teamB: 'סקוטלנד 🏴󠁧󠁢󠁳󠁣󠁴󠁿', startTime: '2026-06-14T04:00', isvisable: false, predictions: ['wc07_q1', 'wc07_q2', 'wc07_q3', 'wc07_q4', 'wc07_q5', 'wc07_q6'] },
+  { id: 'wc08', teamA: 'ארגנטינה 🇦🇷', teamB: 'אורוגוואי 🇺🇾', startTime: '2026-06-14T19:00', isvisable: false, predictions: ['wc08_q1', 'wc08_q2', 'wc08_q3', 'wc08_q4', 'wc08_q5', 'wc08_q6'] },
+  { id: 'wc09', teamA: 'צרפת 🇫🇷', teamB: 'קולומביה 🇨🇴', startTime: '2026-06-14T22:00', isvisable: false, predictions: ['wc09_q1', 'wc09_q2', 'wc09_q3', 'wc09_q4', 'wc09_q5', 'wc09_q6'] },
+  { id: 'wc10', teamA: 'ספרד 🇪🇸', teamB: 'אקוודור 🇪🇨', startTime: '2026-06-15T01:00', isvisable: false, predictions: ['wc10_q1', 'wc10_q2', 'wc10_q3', 'wc10_q4', 'wc10_q5', 'wc10_q6'] },
+  { id: 'wc11', teamA: 'גרמניה 🇩🇪', teamB: 'יפן 🇯🇵', startTime: '2026-06-15T19:00', isvisable: false, predictions: ['wc11_q1', 'wc11_q2', 'wc11_q3', 'wc11_q4', 'wc11_q5', 'wc11_q6'] },
+  { id: 'wc12', teamA: 'פורטוגל 🇵🇹', teamB: 'סנגל 🇸🇳', startTime: '2026-06-15T22:00', isvisable: false, predictions: ['wc12_q1', 'wc12_q2', 'wc12_q3', 'wc12_q4', 'wc12_q5', 'wc12_q6'] },
+  { id: 'wc13', teamA: 'אנגליה 🏴󠁧󠁢󠁥󠁮󠁧󠁿', teamB: 'ניגריה 🇳🇬', startTime: '2026-06-16T01:00', isvisable: false, predictions: ['wc13_q1', 'wc13_q2', 'wc13_q3', 'wc13_q4', 'wc13_q5', 'wc13_q6'] },
+  { id: 'wc14', teamA: 'הולנד 🇳🇱', teamB: 'קרואטיה 🇭🇷', startTime: '2026-06-16T19:00', isvisable: false, predictions: ['wc14_q1', 'wc14_q2', 'wc14_q3', 'wc14_q4', 'wc14_q5', 'wc14_q6'] },
+  { id: 'wc15', teamA: 'בלגיה 🇧🇪', teamB: 'דנמרק 🇩🇰', startTime: '2026-06-16T22:00', isvisable: false, predictions: ['wc15_q1', 'wc15_q2', 'wc15_q3', 'wc15_q4', 'wc15_q5', 'wc15_q6'] },
+  { id: 'wc16', teamA: 'איטליה 🇮🇹', teamB: 'איראן 🇮🇷', startTime: '2026-06-17T01:00', isvisable: false, predictions: ['wc16_q1', 'wc16_q2', 'wc16_q3', 'wc16_q4', 'wc16_q5', 'wc16_q6'] },
+  { id: 'wc17', teamA: 'מקסיקו 🇲🇽', teamB: 'צ\'כיה 🇨🇿', startTime: '2026-06-17T19:00', isvisable: false, predictions: ['wc17_q1', 'wc17_q2', 'wc17_q3', 'wc17_q4', 'wc17_q5', 'wc17_q6'] },
+  { id: 'wc18', teamA: 'דרום אפריקה 🇿🇦', teamB: 'קוריאה הדרומית 🇰🇷', startTime: '2026-06-17T22:00', isvisable: false, predictions: ['wc18_q1', 'wc18_q2', 'wc18_q3', 'wc18_q4', 'wc18_q5', 'wc18_q6'] },
+  { id: 'wc19', teamA: 'קנדה 🇨🇦', teamB: 'שוויץ 🇨🇭', startTime: '2026-06-18T01:00', isvisable: false, predictions: ['wc19_q1', 'wc19_q2', 'wc19_q3', 'wc19_q4', 'wc19_q5', 'wc19_q6'] },
+  { id: 'wc20', teamA: 'בוסניה 🇧🇦', teamB: 'קטאר 🇶🇦', startTime: '2026-06-18T19:00', isvisable: false, predictions: ['wc20_q1', 'wc20_q2', 'wc20_q3', 'wc20_q4', 'wc20_q5', 'wc20_q6'] },
+  { id: 'wc21', teamA: 'ברזיל 🇧🇷', teamB: 'סקוטלנד 🏴󠁧󠁢󠁳󠁣󠁴󠁿', startTime: '2026-06-18T22:00', isvisable: false, predictions: ['wc21_q1', 'wc21_q2', 'wc21_q3', 'wc21_q4', 'wc21_q5', 'wc21_q6'] },
+  { id: 'wc22', teamA: 'מרוקו 🇲🇦', teamB: 'האיטי 🇭🇹', startTime: '2026-06-19T01:00', isvisable: false, predictions: ['wc22_q1', 'wc22_q2', 'wc22_q3', 'wc22_q4', 'wc22_q5', 'wc22_q6'] },
+  { id: 'wc23', teamA: 'ארה"ב 🇺🇸', teamB: 'קולומביה 🇨🇴', startTime: '2026-06-19T19:00', isvisable: false, predictions: ['wc23_q1', 'wc23_q2', 'wc23_q3', 'wc23_q4', 'wc23_q5', 'wc23_q6'] },
+  { id: 'wc24', teamA: 'פרגוואי 🇵🇾', teamB: 'צרפת 🇫🇷', startTime: '2026-06-19T22:00', isvisable: false, predictions: ['wc24_q1', 'wc24_q2', 'wc24_q3', 'wc24_q4', 'wc24_q5', 'wc24_q6'] },
+];
+
+const isMatchExpired = (startTimeStr, now) => {
+  const start = new Date(startTimeStr);
+  if (now < start) return false;
+  
+  const next10AM = new Date(start);
+  next10AM.setHours(10, 0, 0, 0);
+  if (next10AM <= start) {
+    next10AM.setDate(next10AM.getDate() + 1);
+  }
+  return now >= next10AM;
+};
+
+const rotateMatchVisibility = (matches) => {
+  const now = new Date();
+  let changed = false;
+
+  // 1. Set isvisable = false for all expired matches that are currently marked visible
+  matches.forEach(m => {
+    if (m.isvisable && isMatchExpired(m.startTime, now)) {
+      m.isvisable = false;
+      changed = true;
+    }
+  });
+
+  // 2. Count how many non-expired matches are currently visible
+  const visibleCount = matches.filter(m => m.isvisable && !isMatchExpired(m.startTime, now)).length;
+
+  // 3. If we have less than 6 visible upcoming matches, load/enable visibility for the next upcoming ones
+  if (visibleCount < 6) {
+    let needed = 6 - visibleCount;
+    for (const m of matches) {
+      if (needed <= 0) break;
+      if (!m.isvisable && !isMatchExpired(m.startTime, now)) {
+        m.isvisable = true;
+        needed--;
+        changed = true;
+      }
+    }
+  }
+
+  return { matches, changed };
+};
+
 export const api = {
   loginWithGoogle: async () => {
     const provider = new GoogleAuthProvider();
@@ -84,99 +154,78 @@ export const api = {
   },
 
   getMatches: async () => {
-    const F = (code) => `https://flagcdn.com/w40/${code}.png`;
-
-    // Full World Cup 2026 Group Stage schedule
-    const ALL_MATCHES = [
-      { id: 'wc01', teamA: 'מקסיקו', teamB: 'דרום אפריקה', teamAFlag: F('mx'), teamBFlag: F('za'), date: '2026-06-11T22:00', group: 'A' },
-      { id: 'wc02', teamA: 'קוריאה הדרומית', teamB: 'צ\'כיה', teamAFlag: F('kr'), teamBFlag: F('cz'), date: '2026-06-12T05:00', group: 'A' },
-      { id: 'wc03', teamA: 'קנדה', teamB: 'בוסניה', teamAFlag: F('ca'), teamBFlag: F('ba'), date: '2026-06-12T22:00', group: 'B' },
-      { id: 'wc04', teamA: 'ארה"ב', teamB: 'פרגוואי', teamAFlag: F('us'), teamBFlag: F('py'), date: '2026-06-13T04:00', group: 'D' },
-      { id: 'wc05', teamA: 'קטאר', teamB: 'שוויץ', teamAFlag: F('qa'), teamBFlag: F('ch'), date: '2026-06-13T22:00', group: 'B' },
-      { id: 'wc06', teamA: 'ברזיל', teamB: 'מרוקו', teamAFlag: F('br'), teamBFlag: F('ma'), date: '2026-06-14T01:00', group: 'C' },
-      { id: 'wc07', teamA: 'האיטי', teamB: 'סקוטלנד', teamAFlag: F('ht'), teamBFlag: F('gb-sct'), date: '2026-06-14T04:00', group: 'C' },
-      { id: 'wc08', teamA: 'ארגנטינה', teamB: 'אורוגוואי', teamAFlag: F('ar'), teamBFlag: F('uy'), date: '2026-06-14T19:00', group: 'E' },
-      { id: 'wc09', teamA: 'צרפת', teamB: 'קולומביה', teamAFlag: F('fr'), teamBFlag: F('co'), date: '2026-06-14T22:00', group: 'D' },
-      { id: 'wc10', teamA: 'ספרד', teamB: 'אקוודור', teamAFlag: F('es'), teamBFlag: F('ec'), date: '2026-06-15T01:00', group: 'E' },
-      { id: 'wc11', teamA: 'גרמניה', teamB: 'יפן', teamAFlag: F('de'), teamBFlag: F('jp'), date: '2026-06-15T19:00', group: 'F' },
-      { id: 'wc12', teamA: 'פורטוגל', teamB: 'סנגל', teamAFlag: F('pt'), teamBFlag: F('sn'), date: '2026-06-15T22:00', group: 'F' },
-      { id: 'wc13', teamA: 'אנגליה', teamB: 'ניגריה', teamAFlag: F('gb-eng'), teamBFlag: F('ng'), date: '2026-06-16T01:00', group: 'G' },
-      { id: 'wc14', teamA: 'הולנד', teamB: 'קרואטיה', teamAFlag: F('nl'), teamBFlag: F('hr'), date: '2026-06-16T19:00', group: 'G' },
-      { id: 'wc15', teamA: 'בלגיה', teamB: 'דנמרק', teamAFlag: F('be'), teamBFlag: F('dk'), date: '2026-06-16T22:00', group: 'H' },
-      { id: 'wc16', teamA: 'איטליה', teamB: 'איראן', teamAFlag: F('it'), teamBFlag: F('ir'), date: '2026-06-17T01:00', group: 'H' },
-      { id: 'wc17', teamA: 'מקסיקו', teamB: 'צ\'כיה', teamAFlag: F('mx'), teamBFlag: F('cz'), date: '2026-06-17T19:00', group: 'A' },
-      { id: 'wc18', teamA: 'דרום אפריקה', teamB: 'קוריאה הדרומית', teamAFlag: F('za'), teamBFlag: F('kr'), date: '2026-06-17T22:00', group: 'A' },
-      { id: 'wc19', teamA: 'קנדה', teamB: 'שוויץ', teamAFlag: F('ca'), teamBFlag: F('ch'), date: '2026-06-18T01:00', group: 'B' },
-      { id: 'wc20', teamA: 'בוסניה', teamB: 'קטאר', teamAFlag: F('ba'), teamBFlag: F('qa'), date: '2026-06-18T19:00', group: 'B' },
-      { id: 'wc21', teamA: 'ברזיל', teamB: 'סקוטלנד', teamAFlag: F('br'), teamBFlag: F('gb-sct'), date: '2026-06-18T22:00', group: 'C' },
-      { id: 'wc22', teamA: 'מרוקו', teamB: 'האיטי', teamAFlag: F('ma'), teamBFlag: F('ht'), date: '2026-06-19T01:00', group: 'C' },
-      { id: 'wc23', teamA: 'ארה"ב', teamB: 'קולומביה', teamAFlag: F('us'), teamBFlag: F('co'), date: '2026-06-19T19:00', group: 'D' },
-      { id: 'wc24', teamA: 'פרגוואי', teamB: 'צרפת', teamAFlag: F('py'), teamBFlag: F('fr'), date: '2026-06-19T22:00', group: 'D' },
-    ];
-
-    const getNext6Matches = (sourceMatches) => {
+    const formatTimeLabel = (startTimeStr) => {
+      if (!startTimeStr) return '';
       const now = new Date();
-      const upcoming = sourceMatches.filter(m => !m.date || new Date(m.date) > now || m.status === 'upcoming');
-      const toShow = upcoming.length >= 6 ? upcoming.slice(0, 6) : sourceMatches.slice(0, 6);
-
+      const d = new Date(startTimeStr);
+      const dayDiff = Math.floor((d - now) / (1000 * 60 * 60 * 24));
       const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
       const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
-      
-      return toShow.map(m => {
-        if (!m.date) return m;
-        const d = new Date(m.date);
-        const dayDiff = Math.floor((d - now) / (1000 * 60 * 60 * 24));
-        let timeLabel;
-        if (dayDiff <= 0) timeLabel = `היום, ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-        else if (dayDiff === 1) timeLabel = `מחר, ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-        else timeLabel = `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]}, ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-        return { ...m, time: timeLabel, status: 'upcoming' };
-      });
+
+      if (dayDiff <= 0 && d.getDate() === now.getDate()) {
+        return `היום, ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      } else if (dayDiff === 1 || (dayDiff === 0 && d.getDate() === now.getDate() + 1)) {
+        return `מחר, ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      } else {
+        return `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]}, ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      }
     };
 
     return tryFirebase(
       async () => {
         const snap = await getDocs(collection(firestore, 'matches'));
+        let matchesList = [];
         if (snap.empty) {
-          return getNext6Matches(ALL_MATCHES);
+          for (const m of ALL_MATCHES) {
+            await setDoc(doc(firestore, 'matches', m.id), m);
+          }
+          matchesList = [...ALL_MATCHES];
+        } else {
+          matchesList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          matchesList.sort((a, b) => a.id.localeCompare(b.id));
         }
-        const matches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        return getNext6Matches(matches);
+
+        const { matches: rotated, changed } = rotateMatchVisibility(matchesList);
+        if (changed) {
+          for (const m of rotated) {
+            await updateDoc(doc(firestore, 'matches', m.id), { isvisable: m.isvisable });
+          }
+        }
+
+        return rotated
+          .filter(m => m.isvisable)
+          .map(m => ({
+            ...m,
+            time: formatTimeLabel(m.startTime),
+            status: 'upcoming'
+          }));
       },
       () => {
-        return getNext6Matches(ALL_MATCHES);
+        const localMatches = JSON.parse(localStorage.getItem('gut_matches_v2') || '[]');
+        let matchesList = localMatches;
+        if (localMatches.length === 0) {
+          matchesList = [...ALL_MATCHES];
+        }
+        matchesList.sort((a, b) => a.id.localeCompare(b.id));
+
+        const { matches: rotated, changed } = rotateMatchVisibility(matchesList);
+        if (changed || localMatches.length === 0) {
+          localStorage.setItem('gut_matches_v2', JSON.stringify(rotated));
+        }
+
+        return rotated
+          .filter(m => m.isvisable)
+          .map(m => ({
+            ...m,
+            time: formatTimeLabel(m.startTime),
+            status: 'upcoming'
+          }));
       }
     );
   },
 
   getQuestions: async (matchId) => {
     const generateQuestions = () => {
-      const ALL_MATCHES = [
-        { id: 'wc01', teamA: 'מקסיקו', teamB: 'דרום אפריקה' },
-        { id: 'wc02', teamA: 'קוריאה הדרומית', teamB: 'צ\'כיה' },
-        { id: 'wc03', teamA: 'קנדה', teamB: 'בוסניה' },
-        { id: 'wc04', teamA: 'ארה"ב', teamB: 'פרגוואי' },
-        { id: 'wc05', teamA: 'קטאר', teamB: 'שוויץ' },
-        { id: 'wc06', teamA: 'ברזיל', teamB: 'מרוקו' },
-        { id: 'wc07', teamA: 'האיטי', teamB: 'סקוטלנד' },
-        { id: 'wc08', teamA: 'ארגנטינה', teamB: 'אורוגוואי' },
-        { id: 'wc09', teamA: 'צרפת', teamB: 'קולומביה' },
-        { id: 'wc10', teamA: 'ספרד', teamB: 'אקוודור' },
-        { id: 'wc11', teamA: 'גרמניה', teamB: 'יפן' },
-        { id: 'wc12', teamA: 'פורטוגל', teamB: 'סנגל' },
-        { id: 'wc13', teamA: 'אנגליה', teamB: 'ניגריה' },
-        { id: 'wc14', teamA: 'הולנד', teamB: 'קרואטיה' },
-        { id: 'wc15', teamA: 'בלגיה', teamB: 'דנמרק' },
-        { id: 'wc16', teamA: 'איטליה', teamB: 'איראן' },
-        { id: 'wc17', teamA: 'מקסיקו', teamB: 'צ\'כיה' },
-        { id: 'wc18', teamA: 'דרום אפריקה', teamB: 'קוריאה הדרומית' },
-        { id: 'wc19', teamA: 'קנדה', teamB: 'שוויץ' },
-        { id: 'wc20', teamA: 'בוסניה', teamB: 'קטאר' },
-        { id: 'wc21', teamA: 'ברזיל', teamB: 'סקוטלנד' },
-        { id: 'wc22', teamA: 'מרוקו', teamB: 'האיטי' },
-        { id: 'wc23', teamA: 'ארה"ב', teamB: 'קולומביה' },
-        { id: 'wc24', teamA: 'פרגוואי', teamB: 'צרפת' },
-      ];
       const m = ALL_MATCHES.find(x => x.id === matchId) || ALL_MATCHES[0];
       const ta = m.teamA;
       const tb = m.teamB;
@@ -365,6 +414,15 @@ export const api = {
   submitPrediction: async (userId, questionId, answer) => {
     return tryFirebase(
       async () => {
+        const matchId = questionId.split('_')[0];
+        const matchDoc = await getDoc(doc(firestore, 'matches', matchId));
+        if (matchDoc.exists()) {
+          const matchData = matchDoc.data();
+          if (new Date() >= new Date(matchData.startTime)) {
+            throw new Error('not more bets, המשחק התחיל ולכן לא ניתן לנחש עוד');
+          }
+        }
+
         const qRef = doc(firestore, 'predictions', questionId);
         if (answer === 'A') {
           await updateDoc(qRef, {
@@ -382,6 +440,13 @@ export const api = {
         return { success: true };
       },
       () => {
+        const matchId = questionId.split('_')[0];
+        const localMatches = JSON.parse(localStorage.getItem('gut_matches_v2') || '[]');
+        const m = localMatches.find(x => x.id === matchId) || ALL_MATCHES.find(x => x.id === matchId);
+        if (m && new Date() >= new Date(m.startTime)) {
+          throw new Error('not more bets, המשחק התחיל ולכן לא ניתן לנחש עוד');
+        }
+
         const allPreds = JSON.parse(localStorage.getItem('gut_preds_v2') || '[]');
         const qIndex = allPreds.findIndex(q => q.id === questionId);
         if (qIndex > -1) {
