@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "resolve": "node answers/resolve.js"
+    "resolve": "node answers/resolve.js",
+    "upload": "node answers/upload.js"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

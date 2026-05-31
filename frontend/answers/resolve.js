@@ -53,9 +53,6 @@ const resolveSingleQuestionInFirestore = async (questionId, correctAnswer) => {
   
   const qData = qSnap.data();
   const prevAnswer = qData.correctAnswer || "";
-  const points = qData.points || 0;
-  const usersA = qData.usersA || [];
-  const usersB = qData.usersB || [];
 
   if (prevAnswer === correctAnswer) {
     console.log(`ℹ️  No change for ${questionId}. Already set to "${correctAnswer}".`);
@@ -64,69 +61,59 @@ const resolveSingleQuestionInFirestore = async (questionId, correctAnswer) => {
 
   console.log(`🔄 Resolving ${questionId}: "${prevAnswer || "UNRESOLVED"}" ➡️  "${correctAnswer}"`);
 
-  // 1. Revert previous resolution if it existed
-  if (prevAnswer === 'A' || prevAnswer === 'B') {
-    console.log(`↩️  Reverting previous points awarded for "${prevAnswer}"...`);
-    const winners = prevAnswer === 'A' ? usersA : usersB;
-    const losers = prevAnswer === 'A' ? usersB : usersA;
-
-    for (const uid of winners) {
-      const uRef = doc(firestore, 'users', uid);
-      const uSnap = await getDoc(uRef);
-      if (uSnap.exists()) {
-        const uData = uSnap.data();
-        await updateDoc(uRef, {
-          score: Math.max(0, (uData.score || 0) - points),
-          correct: Math.max(0, (uData.correct || 0) - 1),
-          total: Math.max(0, (uData.total || 0) - 1),
-          streak: Math.max(0, (uData.streak || 0) - 1)
-        });
-      }
-    }
-    for (const uid of losers) {
-      const uRef = doc(firestore, 'users', uid);
-      const uSnap = await getDoc(uRef);
-      if (uSnap.exists()) {
-        const uData = uSnap.data();
-        await updateDoc(uRef, {
-          total: Math.max(0, (uData.total || 0) - 1)
-        });
-      }
-    }
-  }
-
-  // 2. Apply new resolution
+  // 1. Update correct answer
   await updateDoc(qRef, { correctAnswer });
 
-  if (correctAnswer === 'A' || correctAnswer === 'B') {
-    const winners = correctAnswer === 'A' ? usersA : usersB;
-    const losers = correctAnswer === 'A' ? usersB : usersA;
+  // 2. Gather all users who answered this question
+  const usersA = qData.usersA || [];
+  const usersB = qData.usersB || [];
+  const allUsers = [...new Set([...usersA, ...usersB])];
 
-    console.log(`🎉 Awarding +${points} points to ${winners.length} correct users...`);
-    for (const uid of winners) {
-      const uRef = doc(firestore, 'users', uid);
-      const uSnap = await getDoc(uRef);
-      if (uSnap.exists()) {
-        const uData = uSnap.data();
-        await updateDoc(uRef, {
-          score: (uData.score || 0) + points,
-          correct: (uData.correct || 0) + 1,
-          total: (uData.total || 0) + 1,
-          streak: (uData.streak || 0) + 1
-        });
+  console.log(`📊 Recalculating stats chronologically for ${allUsers.length} users...`);
+  for (const uid of allUsers) {
+    const qA = query(collection(firestore, 'predictions'), where('usersA', 'array-contains', uid));
+    const qB = query(collection(firestore, 'predictions'), where('usersB', 'array-contains', uid));
+    const [snapA, snapB] = await Promise.all([getDocs(qA), getDocs(qB)]);
+
+    const userPreds = [];
+    snapA.docs.forEach(d => {
+      userPreds.push({ ...d.data(), userAns: 'A' });
+    });
+    snapB.docs.forEach(d => {
+      userPreds.push({ ...d.data(), userAns: 'B' });
+    });
+
+    userPreds.sort((a, b) => a.id.localeCompare(b.id));
+
+    let score = 0;
+    let correct = 0;
+    let total = 0;
+    let streak = 0;
+    let bestStreak = 0;
+
+    for (const pred of userPreds) {
+      if (pred.correctAnswer && pred.correctAnswer !== "") {
+        total += 1;
+        const isCorrect = (pred.userAns === pred.correctAnswer);
+        if (isCorrect) {
+          score += (pred.points || 0);
+          correct += 1;
+          streak += 1;
+          bestStreak = Math.max(bestStreak, streak);
+        } else {
+          streak = 0;
+        }
       }
     }
-    for (const uid of losers) {
-      const uRef = doc(firestore, 'users', uid);
-      const uSnap = await getDoc(uRef);
-      if (uSnap.exists()) {
-        const uData = uSnap.data();
-        await updateDoc(uRef, {
-          total: (uData.total || 0) + 1,
-          streak: 0
-        });
-      }
-    }
+
+    const uRef = doc(firestore, 'users', uid);
+    await updateDoc(uRef, {
+      score,
+      correct,
+      total,
+      streak,
+      bestStreak
+    });
   }
   
   console.log(`✅ ${questionId} resolved successfully!\n`);

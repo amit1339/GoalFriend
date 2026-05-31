@@ -122,8 +122,17 @@ export default function GroupsPage({ user, onOpenGroup }) {
                   <span style={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: 'rgba(255,255,255,0.2)', overflow: 'hidden', flexShrink: 0 }}>
                     {renderAvatar(member.avatar)}
                   </span>
-                  <span style={{ flex: 1, fontWeight: isMe ? 800 : 600, fontSize: 14 }}>
+                  <span style={{ flex: 1, fontWeight: isMe ? 800 : 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {member.name || 'משתמש'} {isMe && '(אתה)'}
+                    <span style={{ 
+                      background: 'rgba(255,255,255,0.2)', 
+                      padding: '2px 8px', 
+                      borderRadius: 12, 
+                      fontSize: 11, 
+                      fontWeight: 700 
+                    }} title={`שיא רצף: ${member.bestStreak || 0}`}>
+                      🔥 {member.bestStreak || 0}
+                    </span>
                   </span>
                   <span style={{ fontWeight: 800, fontSize: 14 }}>{member.score || 0} נק׳</span>
                 </div>
@@ -207,7 +216,16 @@ export default function GroupsPage({ user, onOpenGroup }) {
                       </span>
                       <span style={{ fontSize: 16, marginLeft: 4 }}>{leader.avatar}</span>
                       <span className="name">{leader.name}</span>
-                      <span className="score">{leader.score} נק׳</span>
+                      <span className="score" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {leader.score} נק׳
+                        <span style={{ 
+                          fontSize: 12, 
+                          color: 'var(--secondary)', 
+                          fontWeight: 700 
+                        }} title={`שיא רצף: ${leader.bestStreak || 0}`}>
+                          🔥{leader.bestStreak || 0}
+                        </span>
+                      </span>
                     </div>
                   ))}
                 </div>

@@ -247,9 +247,9 @@ export default function GroupDetail({ user, groupId, onBack }) {
                   <span style={{ fontWeight: isCurrentUser ? 800 : 600 }}>
                     {member.name} {isCurrentUser && '(אתה)'}
                   </span>
-                  {member.streak >= 3 && (
-                    <span className="streak-badge" title={`רצף של ${member.streak} פגיעות!`}>
-                      🔥 {member.streak}
+                  {(member.bestStreak || 0) > 0 && (
+                    <span className="streak-badge" style={{ background: 'var(--primary)', fontSize: 11 }} title={`שיא רצף: ${member.bestStreak} פגיעות!`}>
+                      🔥 שיא: {member.bestStreak}
                     </span>
                   )}
                   {index === leaderboard.length - 1 && leaderboard.length > 1 && (

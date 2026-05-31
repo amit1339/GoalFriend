@@ -22,10 +22,14 @@ const ensureUserInFirestore = async (user) => {
   const snap = await getDoc(userRef);
   let userData;
   if (!snap.exists()) {
-    userData = { id: user.uid, name: user.displayName, avatar: user.photoURL || '😎', score: 0, streak: 0, correct: 0, total: 0, groups: [], createdAt: new Date().toISOString() };
+    userData = { id: user.uid, name: user.displayName, avatar: user.photoURL || '😎', score: 0, streak: 0, bestStreak: 0, correct: 0, total: 0, groups: [], createdAt: new Date().toISOString() };
     await setDoc(userRef, userData);
   } else {
     userData = { id: user.uid, ...snap.data() };
+    if (userData.bestStreak === undefined) {
+      userData.bestStreak = userData.streak || 0;
+      await updateDoc(userRef, { bestStreak: userData.bestStreak });
+    }
   }
   return userData;
 };
@@ -46,7 +50,7 @@ export const api = {
       console.warn('Google login error:', popupErr.message);
       // Local fallback
       const userId = 'u_' + Math.random().toString(36).substr(2, 9);
-      const userData = { id: userId, name: 'משתמש (טסט)', avatar: '😎', score: 0, streak: 0, correct: 0, total: 0, groups: [] };
+      const userData = { id: userId, name: 'משתמש (טסט)', avatar: '😎', score: 0, streak: 0, bestStreak: 0, correct: 0, total: 0, groups: [] };
       localStorage.setItem('gut_or_heart_user', JSON.stringify(userData));
       return userData;
     }
@@ -411,7 +415,7 @@ export const api = {
     if (!userSnap.exists()) {
       // Create user doc in Firestore from localStorage data
       const localUser = JSON.parse(localStorage.getItem('gut_or_heart_user') || localStorage.getItem('gut_heart_user') || '{}');
-      await setDoc(userRef, { id: creatorId, name: localUser.name || 'משתמש', avatar: localUser.avatar || '😎', score: 0, streak: 0, correct: 0, total: 0, groups: [] });
+      await setDoc(userRef, { id: creatorId, name: localUser.name || 'משתמש', avatar: localUser.avatar || '😎', score: 0, streak: 0, bestStreak: 0, correct: 0, total: 0, groups: [] });
     }
     
     const groupRef = await addDoc(collection(firestore, 'groups'), groupData);
@@ -427,7 +431,29 @@ export const api = {
         const groups = [];
         for (const gid of groupIds) {
           const gSnap = await getDoc(doc(firestore, 'groups', gid));
-          if (gSnap.exists()) groups.push({ id: gSnap.id, ...gSnap.data() });
+          if (gSnap.exists()) {
+            const gData = gSnap.data();
+            const members = [];
+            if (gData.members) {
+              for (const uid of gData.members) {
+                const uSnap = await getDoc(doc(firestore, 'users', uid));
+                if (uSnap.exists()) members.push(uSnap.data());
+              }
+            }
+            members.sort((a, b) => {
+              if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+              return (b.bestStreak || 0) - (a.bestStreak || 0);
+            });
+            const userRank = members.findIndex(m => m.id === userId) + 1;
+            groups.push({
+              id: gSnap.id,
+              ...gData,
+              memberCount: members.length,
+              totalPool: members.length * (gData.poolAmount || 0),
+              userRank: userRank > 0 ? userRank : 1,
+              leaderboard: members.slice(0, 3).map(m => ({ userId: m.id, name: m.name, score: m.score, avatar: m.avatar, bestStreak: m.bestStreak || 0 }))
+            });
+          }
         }
         return groups;
       },
@@ -464,7 +490,25 @@ export const api = {
       async () => {
         const docSnap = await getDoc(doc(firestore, 'groups', id));
         if (!docSnap.exists()) throw new Error('Group not found');
-        return { id: docSnap.id, ...docSnap.data() };
+        const gData = docSnap.data();
+        const members = [];
+        if (gData.members) {
+          for (const uid of gData.members) {
+            const uSnap = await getDoc(doc(firestore, 'users', uid));
+            if (uSnap.exists()) members.push(uSnap.data());
+          }
+        }
+        members.sort((a, b) => {
+          if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+          return (b.bestStreak || 0) - (a.bestStreak || 0);
+        });
+        return {
+          id: docSnap.id,
+          ...gData,
+          memberCount: members.length,
+          totalPool: members.length * (gData.poolAmount || 0),
+          leaderboard: members.slice(0, 3).map(m => ({ userId: m.id, name: m.name, score: m.score, avatar: m.avatar, bestStreak: m.bestStreak || 0 }))
+        };
       },
       () => {
         const groups = JSON.parse(localStorage.getItem('gut_groups') || '[]');
@@ -483,7 +527,10 @@ export const api = {
           const uSnap = await getDoc(doc(firestore, 'users', uid));
           if (uSnap.exists()) users.push(uSnap.data());
         }
-        return users.sort((a, b) => (b.score || 0) - (a.score || 0));
+        return users.sort((a, b) => {
+          if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+          return (b.bestStreak || 0) - (a.bestStreak || 0);
+        });
       },
       () => {
         const localUser = JSON.parse(localStorage.getItem('gut_or_heart_user') || '{}');
@@ -497,7 +544,10 @@ export const api = {
       async () => {
         const snap = await getDocs(collection(firestore, 'users'));
         const users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        return users.sort((a, b) => (b.score || 0) - (a.score || 0));
+        return users.sort((a, b) => {
+          if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+          return (b.bestStreak || 0) - (a.bestStreak || 0);
+        });
       },
       () => {
         const localUser = JSON.parse(localStorage.getItem('gut_or_heart_user') || localStorage.getItem('gut_heart_user') || '{}');
@@ -521,6 +571,104 @@ export const api = {
     );
   },
 
+  recalculateUserStats: async (userId) => {
+    const qA = query(collection(firestore, 'predictions'), where('usersA', 'array-contains', userId));
+    const qB = query(collection(firestore, 'predictions'), where('usersB', 'array-contains', userId));
+    const [snapA, snapB] = await Promise.all([getDocs(qA), getDocs(qB)]);
+
+    const userPreds = [];
+    snapA.docs.forEach(d => {
+      userPreds.push({ ...d.data(), userAns: 'A' });
+    });
+    snapB.docs.forEach(d => {
+      userPreds.push({ ...d.data(), userAns: 'B' });
+    });
+
+    userPreds.sort((a, b) => a.id.localeCompare(b.id));
+
+    let score = 0;
+    let correct = 0;
+    let total = 0;
+    let streak = 0;
+    let bestStreak = 0;
+
+    for (const pred of userPreds) {
+      if (pred.correctAnswer && pred.correctAnswer !== "") {
+        total += 1;
+        const isCorrect = (pred.userAns === pred.correctAnswer);
+        if (isCorrect) {
+          score += (pred.points || 0);
+          correct += 1;
+          streak += 1;
+          bestStreak = Math.max(bestStreak, streak);
+        } else {
+          streak = 0;
+        }
+      }
+    }
+
+    const uRef = doc(firestore, 'users', userId);
+    await updateDoc(uRef, {
+      score,
+      correct,
+      total,
+      streak,
+      bestStreak
+    });
+
+    return { score, correct, total, streak, bestStreak };
+  },
+
+  recalculateUserStatsLocal: (userId) => {
+    const allPreds = JSON.parse(localStorage.getItem('gut_preds_v2') || '[]');
+    const userPreds = [];
+    allPreds.forEach(q => {
+      const uA = q.usersA || [];
+      const uB = q.usersB || [];
+      if (uA.includes(userId)) {
+        userPreds.push({ ...q, userAns: 'A' });
+      } else if (uB.includes(userId)) {
+        userPreds.push({ ...q, userAns: 'B' });
+      }
+    });
+
+    userPreds.sort((a, b) => a.id.localeCompare(b.id));
+
+    let score = 0;
+    let correct = 0;
+    let total = 0;
+    let streak = 0;
+    let bestStreak = 0;
+
+    for (const pred of userPreds) {
+      if (pred.correctAnswer && pred.correctAnswer !== "") {
+        total += 1;
+        const isCorrect = (pred.userAns === pred.correctAnswer);
+        if (isCorrect) {
+          score += (pred.points || 0);
+          correct += 1;
+          streak += 1;
+          bestStreak = Math.max(bestStreak, streak);
+        } else {
+          streak = 0;
+        }
+      }
+    }
+
+    const localUser = JSON.parse(localStorage.getItem('gut_or_heart_user') || localStorage.getItem('gut_heart_user') || '{}');
+    if (localUser.id === userId) {
+      localUser.score = score;
+      localUser.correct = correct;
+      localUser.total = total;
+      localUser.streak = streak;
+      localUser.bestStreak = bestStreak;
+      localStorage.setItem('gut_or_heart_user', JSON.stringify(localUser));
+      localStorage.setItem('gut_heart_user', JSON.stringify(localUser));
+    }
+
+    return { score, correct, total, streak, bestStreak };
+  },
+
   resolveQuestion: async (questionId, correctAnswer) => {
     return tryFirebase(
       async () => {
@@ -529,73 +677,20 @@ export const api = {
         if (!qSnap.exists()) throw new Error('Question not found');
         const qData = qSnap.data();
         const prevAnswer = qData.correctAnswer || "";
-        const points = qData.points || 0;
-        const usersA = qData.usersA || [];
-        const usersB = qData.usersB || [];
 
         if (prevAnswer === correctAnswer) return { success: true, message: 'No change' };
 
-        // 1. Revert previous resolution if it existed
-        if (prevAnswer === 'A' || prevAnswer === 'B') {
-          const winners = prevAnswer === 'A' ? usersA : usersB;
-          const losers = prevAnswer === 'A' ? usersB : usersA;
-
-          for (const uid of winners) {
-            const uRef = doc(firestore, 'users', uid);
-            const uSnap = await getDoc(uRef);
-            if (uSnap.exists()) {
-              const uData = uSnap.data();
-              await updateDoc(uRef, {
-                score: Math.max(0, (uData.score || 0) - points),
-                correct: Math.max(0, (uData.correct || 0) - 1),
-                total: Math.max(0, (uData.total || 0) - 1),
-                streak: Math.max(0, (uData.streak || 0) - 1)
-              });
-            }
-          }
-          for (const uid of losers) {
-            const uRef = doc(firestore, 'users', uid);
-            const uSnap = await getDoc(uRef);
-            if (uSnap.exists()) {
-              const uData = uSnap.data();
-              await updateDoc(uRef, {
-                total: Math.max(0, (uData.total || 0) - 1)
-              });
-            }
-          }
-        }
-
-        // 2. Apply new resolution
+        // 1. Update correct answer
         await updateDoc(qRef, { correctAnswer });
 
-        if (correctAnswer === 'A' || correctAnswer === 'B') {
-          const winners = correctAnswer === 'A' ? usersA : usersB;
-          const losers = correctAnswer === 'A' ? usersB : usersA;
+        // 2. Gather all users who answered this question
+        const usersA = qData.usersA || [];
+        const usersB = qData.usersB || [];
+        const allUsers = [...new Set([...usersA, ...usersB])];
 
-          for (const uid of winners) {
-            const uRef = doc(firestore, 'users', uid);
-            const uSnap = await getDoc(uRef);
-            if (uSnap.exists()) {
-              const uData = uSnap.data();
-              await updateDoc(uRef, {
-                score: (uData.score || 0) + points,
-                correct: (uData.correct || 0) + 1,
-                total: (uData.total || 0) + 1,
-                streak: (uData.streak || 0) + 1
-              });
-            }
-          }
-          for (const uid of losers) {
-            const uRef = doc(firestore, 'users', uid);
-            const uSnap = await getDoc(uRef);
-            if (uSnap.exists()) {
-              const uData = uSnap.data();
-              await updateDoc(uRef, {
-                total: (uData.total || 0) + 1,
-                streak: 0
-              });
-            }
-          }
+        // 3. Recalculate stats for everyone chronologically
+        for (const uid of allUsers) {
+          await api.recalculateUserStats(uid);
         }
 
         return { success: true };
@@ -606,52 +701,21 @@ export const api = {
         if (qIndex === -1) throw new Error('Question not found');
         const qData = allPreds[qIndex];
         const prevAnswer = qData.correctAnswer || "";
-        const points = qData.points || 0;
-        const usersA = qData.usersA || [];
-        const usersB = qData.usersB || [];
 
         if (prevAnswer === correctAnswer) return { success: true, message: 'No change' };
-
-        const localUser = JSON.parse(localStorage.getItem('gut_or_heart_user') || localStorage.getItem('gut_heart_user') || '{}');
-        const userId = localUser.id;
-
-        if (userId) {
-          // Revert previous
-          if (prevAnswer === 'A' || prevAnswer === 'B') {
-            const isWinner = prevAnswer === 'A' ? usersA.includes(userId) : usersB.includes(userId);
-            const isLoser = prevAnswer === 'A' ? usersB.includes(userId) : usersA.includes(userId);
-            if (isWinner) {
-              localUser.score = Math.max(0, (localUser.score || 0) - points);
-              localUser.correct = Math.max(0, (localUser.correct || 0) - 1);
-              localUser.total = Math.max(0, (localUser.total || 0) - 1);
-              localUser.streak = Math.max(0, (localUser.streak || 0) - 1);
-            } else if (isLoser) {
-              localUser.total = Math.max(0, (localUser.total || 0) - 1);
-            }
-          }
-
-          // Apply new
-          if (correctAnswer === 'A' || correctAnswer === 'B') {
-            const isWinner = correctAnswer === 'A' ? usersA.includes(userId) : usersB.includes(userId);
-            const isLoser = correctAnswer === 'A' ? usersB.includes(userId) : usersA.includes(userId);
-            if (isWinner) {
-              localUser.score = (localUser.score || 0) + points;
-              localUser.correct = (localUser.correct || 0) + 1;
-              localUser.total = (localUser.total || 0) + 1;
-              localUser.streak = (localUser.streak || 0) + 1;
-            } else if (isLoser) {
-              localUser.total = (localUser.total || 0) + 1;
-              localUser.streak = 0;
-            }
-          }
-
-          localStorage.setItem('gut_or_heart_user', JSON.stringify(localUser));
-          localStorage.setItem('gut_heart_user', JSON.stringify(localUser));
-        }
 
         qData.correctAnswer = correctAnswer;
         allPreds[qIndex] = qData;
         localStorage.setItem('gut_preds_v2', JSON.stringify(allPreds));
+
+        const usersA = qData.usersA || [];
+        const usersB = qData.usersB || [];
+        const allUsers = [...new Set([...usersA, ...usersB])];
+
+        for (const uid of allUsers) {
+          api.recalculateUserStatsLocal(uid);
+        }
+
         return { success: true };
       }
     );

@@ -13,7 +13,10 @@ export default function ProfilePage({ user, onLogout }) {
         api.getPredictions(user.id)
       ])
         .then(([statsRes, predsRes]) => {
-          setStats(statsRes);
+          setStats({
+            ...statsRes,
+            totalPredictions: predsRes.length
+          });
           // Show newest predictions first
           setPredictions(predsRes.reverse());
           setLoading(false);
@@ -122,8 +125,8 @@ export default function ProfilePage({ user, onLogout }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <span className="card-category" style={{
                     background: pred.question?.category === 'ניחוש' ? 'var(--primary)' :
-                                pred.question?.category === 'כיף' ? 'var(--secondary)' :
-                                pred.question?.category === 'דרמה' ? '#e17055' : 'var(--accent-green)',
+                      pred.question?.category === 'כיף' ? 'var(--secondary)' :
+                        pred.question?.category === 'דרמה' ? '#e17055' : 'var(--accent-green)',
                     padding: '4px 10px',
                     fontSize: 11
                   }}>
