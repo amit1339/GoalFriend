@@ -106,38 +106,47 @@ export default function GroupsPage({ user, onOpenGroup }) {
           <p style={{ textAlign: 'center', opacity: 0.8, fontSize: 14 }}>אין משתמשים עדיין</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {globalLeaderboard.slice(0, 10).map((member, index) => {
-              const memberId = member.id || `g_${index}`;
-              const isMe = memberId === user.id;
-              return (
-                <div key={memberId} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  background: isMe ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-                  borderRadius: 10, padding: '8px 12px',
-                  border: isMe ? '2px solid rgba(255,255,255,0.5)' : 'none',
-                }}>
-                  <span style={{ fontWeight: 800, fontSize: 14, minWidth: 28 }}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                  </span>
-                  <span style={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: 'rgba(255,255,255,0.2)', overflow: 'hidden', flexShrink: 0 }}>
-                    {renderAvatar(member.avatar)}
-                  </span>
-                  <span style={{ flex: 1, fontWeight: isMe ? 800 : 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {member.name || 'משתמש'} {isMe && '(אתה)'}
-                    <span style={{ 
-                      background: 'rgba(255,255,255,0.2)', 
-                      padding: '2px 8px', 
-                      borderRadius: 12, 
-                      fontSize: 11, 
-                      fontWeight: 700 
-                    }} title={`שיא רצף: ${member.bestStreak || 0}`}>
-                      🔥 {member.bestStreak || 0}
+            {(() => {
+              const myRankIndex = globalLeaderboard.findIndex(m => m.id === user.id);
+              const top3 = globalLeaderboard.slice(0, 3);
+              const listToRender = top3.map((m, i) => ({ ...m, rank: i + 1 }));
+              if (myRankIndex >= 3) {
+                listToRender.push({ ...globalLeaderboard[myRankIndex], rank: myRankIndex + 1 });
+              }
+              return listToRender.map((member) => {
+                const memberId = member.id || `g_${member.rank}`;
+                const isMe = member.id === user.id;
+                return (
+                  <div key={memberId} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    background: isMe ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                    borderRadius: 10, padding: '8px 12px',
+                    border: isMe ? '2px solid rgba(255,255,255,0.5)' : 'none',
+                    marginTop: (member.rank > 3 && isMe) ? '10px' : '0',
+                  }}>
+                    <span style={{ fontWeight: 800, fontSize: 14, minWidth: 28 }}>
+                      {member.rank === 1 ? '🥇' : member.rank === 2 ? '🥈' : member.rank === 3 ? '🥉' : `#${member.rank}`}
                     </span>
-                  </span>
-                  <span style={{ fontWeight: 800, fontSize: 14 }}>{member.score || 0} נק׳</span>
-                </div>
-              );
-            })}
+                    <span style={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: 'rgba(255,255,255,0.2)', overflow: 'hidden', flexShrink: 0 }}>
+                      {renderAvatar(member.avatar)}
+                    </span>
+                    <span style={{ flex: 1, fontWeight: isMe ? 800 : 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {member.name || 'משתמש'} {isMe && '(אתה)'}
+                      <span style={{ 
+                        background: 'rgba(255,255,255,0.2)', 
+                        padding: '2px 8px', 
+                        borderRadius: 12, 
+                        fontSize: 11, 
+                        fontWeight: 700 
+                      }} title={`שיא רצף: ${member.bestStreak || 0}`}>
+                        🔥 {member.bestStreak || 0}
+                      </span>
+                    </span>
+                    <span style={{ fontWeight: 800, fontSize: 14 }}>{member.score || 0} נק׳</span>
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
       </div>

@@ -1,6 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api } from '../api';
+import { api, getTeamFlagUrl } from '../api';
 import confetti from 'canvas-confetti';
+
+export function TeamLabel({ name, style }) {
+  if (!name) return null;
+  const flagUrl = getTeamFlagUrl(name);
+  const displayName = name.replace(/\b[A-Za-z]{2}\b/g, '').replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
+  
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', verticalAlign: 'middle', ...style }}>
+      {flagUrl && (
+        <img 
+          src={flagUrl} 
+          alt="" 
+          style={{ width: '20px', height: '14px', objectFit: 'cover', borderRadius: '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.15)', flexShrink: 0 }} 
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      )}
+      <span>{displayName}</span>
+    </span>
+  );
+}
 
 export default function SwipePage({ user }) {
   const [matches, setMatches] = useState([]);
@@ -61,6 +81,7 @@ export default function SwipePage({ user }) {
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex) / questions.length) * 100 : 0;
+  const isExpired = selectedMatch && new Date() >= new Date(selectedMatch.startTime);
 
   return (
     <div>
@@ -71,14 +92,17 @@ export default function SwipePage({ user }) {
             key={match.id}
             className={`match-chip ${selectedMatch?.id === match.id ? 'active' : ''}`}
             onClick={() => setSelectedMatch(match)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           >
-            {match.teamA} - {match.teamB}
+            <TeamLabel name={match.teamA} />
+            <span style={{ opacity: 0.5, margin: '0 2px' }}>-</span>
+            <TeamLabel name={match.teamB} />
           </button>
         ))}
       </div>
 
       {/* Progress bar */}
-      {questions.length > 0 && (
+      {questions.length > 0 && !isExpired && (
         <div style={{ height: 5, borderRadius: 3, background: 'rgba(255, 255, 255, 0.06)', marginBottom: 18, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)' }}>
           <div style={{
             height: '100%',
@@ -91,7 +115,19 @@ export default function SwipePage({ user }) {
       )}
 
       {/* Card area */}
-      {currentQuestion ? (
+      {isExpired ? (
+        <div className="swipe-card-wrapper">
+          <div className="swipe-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 320, padding: 24, textAlign: 'center' }}>
+            <div style={{ fontSize: 60, marginBottom: 16 }}>🔒</div>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--secondary)', marginBottom: 12 }}>
+              not more bets
+            </h3>
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 600, maxWidth: 280, lineHeight: 1.6 }}>
+              המשחק התחיל ולכן לא ניתן לנחש עוד
+            </p>
+          </div>
+        </div>
+      ) : currentQuestion ? (
         <div className="swipe-card-wrapper">
           <div className="swipe-card" data-category={currentQuestion.category}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -107,47 +143,29 @@ export default function SwipePage({ user }) {
             <div className="card-match-info" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               {selectedMatch && (
                 <>
-                  <span>{selectedMatch.teamA}</span>
+                  <TeamLabel name={selectedMatch.teamA} />
                   <span style={{ opacity: 0.5, margin: '0 4px' }}>vs</span>
-                  <span>{selectedMatch.teamB}</span>
+                  <TeamLabel name={selectedMatch.teamB} />
                 </>
               )}
             </div>
 
-            {selectedMatch && new Date() >= new Date(selectedMatch.startTime) ? (
-              <div 
-                className="not-more-bets-msg" 
-                style={{ 
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'rgba(244, 63, 94, 0.1)',
-                  border: '1px solid rgba(244, 63, 94, 0.3)',
-                  color: '#fb7185',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  textAlign: 'center',
-                  lineHeight: '1.5'
-                }}
+            <div className="swipe-options">
+              <button
+                className="swipe-btn option-a"
+                onClick={() => handleAnswer('A')}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                not more bets, המשחק התחיל ולכן לא ניתן לנחש עוד
-              </div>
-            ) : (
-              <div className="swipe-options">
-                <button
-                  className="swipe-btn option-a"
-                  onClick={() => handleAnswer('A')}
-                >
-                  {currentQuestion.optionA}
-                </button>
-                <button
-                  className="swipe-btn option-b"
-                  onClick={() => handleAnswer('B')}
-                >
-                  {currentQuestion.optionB}
-                </button>
-              </div>
-            )}
+                <TeamLabel name={currentQuestion.optionA} />
+              </button>
+              <button
+                className="swipe-btn option-b"
+                onClick={() => handleAnswer('B')}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <TeamLabel name={currentQuestion.optionB} />
+              </button>
+            </div>
           </div>
 
           {/* Remaining counter */}
@@ -159,18 +177,22 @@ export default function SwipePage({ user }) {
           </div>
         </div>
       ) : (
-        <div className="no-more-cards">
-          <div className="emoji">🎉</div>
-          <h3>
-            {questions.length === 0 && currentIndex === 0
-              ? 'בחר משחק למעלה!'
-              : 'סיימת את כל השאלות!'}
-          </h3>
-          <p>
-            {questions.length === 0 && currentIndex === 0
-              ? 'בחר משחק מהרשימה למעלה כדי להתחיל לנחש'
-              : 'כל הכבוד! 🏆 בוא נראה מה יקרה במשחק. בינתיים, לך תבדוק את הטבלה בקבוצות שלך!'}
-          </p>
+        <div className="swipe-card-wrapper">
+          <div className="swipe-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 320, padding: 24, textAlign: 'center' }}>
+            <div className="emoji" style={{ fontSize: 60, marginBottom: 16 }}>
+              {questions.length === 0 && currentIndex === 0 ? '🎉' : '🏆'}
+            </div>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)', marginBottom: 12 }}>
+              {questions.length === 0 && currentIndex === 0
+                ? 'הניחושים למשחק זה הושלמו! 🎉'
+                : 'סיימת את כל השאלות! 🏆'}
+            </h3>
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 600, maxWidth: 280, lineHeight: 1.6 }}>
+              {questions.length === 0 && currentIndex === 0
+                ? 'כבר ענית על כל השאלות למשחק זה. כל הכבוד! הניחושים שלך שמורים וממתינים לשריקת הפתיחה.'
+                : 'כל הכבוד! 🏆 בוא נראה מה יקרה במשחק. בינתיים, לך תבדוק את הטבלה בקבוצות שלך!'}
+            </p>
+          </div>
         </div>
       )}
 

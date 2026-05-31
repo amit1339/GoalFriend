@@ -1,10 +1,31 @@
 import { useState, useEffect } from 'react';
-import { api } from '../api';
+import { api, getTeamFlagUrl } from '../api';
+
+export function TeamLabel({ name, style }) {
+  if (!name) return null;
+  const flagUrl = getTeamFlagUrl(name);
+  const displayName = name.replace(/\b[A-Za-z]{2}\b/g, '').replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
+  
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', verticalAlign: 'middle', ...style }}>
+      {flagUrl && (
+        <img 
+          src={flagUrl} 
+          alt="" 
+          style={{ width: '16px', height: '11px', objectFit: 'cover', borderRadius: '1px', boxShadow: '0 1px 2px rgba(0,0,0,0.15)', flexShrink: 0 }} 
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      )}
+      <span>{displayName}</span>
+    </span>
+  );
+}
 
 export default function ProfilePage({ user, onLogout }) {
   const [stats, setStats] = useState(null);
   const [predictions, setPredictions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -118,7 +139,7 @@ export default function ProfilePage({ user, onLogout }) {
         </div>
       ) : (
         <div className="predictions-history">
-          {predictions.map(pred => {
+          {(showAllHistory ? predictions : predictions.slice(0, 5)).map(pred => {
             const pointsGained = pred.isCorrect ? pred.question?.points : 0;
             return (
               <div key={pred.id} className="card" style={{ marginBottom: 12, padding: 18 }}>
@@ -156,14 +177,14 @@ export default function ProfilePage({ user, onLogout }) {
                   <div>
                     <span>הניחוש שלך: </span>
                     <strong style={{ color: 'var(--primary)', fontWeight: 700 }}>
-                      {pred.answer === 'A' ? pred.question?.optionA : pred.question?.optionB}
+                      <TeamLabel name={pred.answer === 'A' ? pred.question?.optionA : pred.question?.optionB} />
                     </strong>
                   </div>
                   {pred.question?.correctAnswer && (
                     <div>
                       <span>התוצאה הנכונה: </span>
                       <strong style={{ color: 'var(--accent-green)', fontWeight: 700 }}>
-                        {pred.question.correctAnswer === 'A' ? pred.question.optionA : pred.question.optionB}
+                        <TeamLabel name={pred.question.correctAnswer === 'A' ? pred.question.optionA : pred.question.optionB} />
                       </strong>
                     </div>
                   )}
@@ -171,6 +192,18 @@ export default function ProfilePage({ user, onLogout }) {
               </div>
             );
           })}
+
+          {predictions.length > 5 && (
+            <div style={{ textAlign: 'center', marginTop: 16 }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ width: '100%', maxWidth: 280, fontSize: 14, background: 'rgba(108, 92, 231, 0.1)', color: 'var(--primary)', border: '1px dashed var(--primary)' }} 
+                onClick={() => setShowAllHistory(!showAllHistory)}
+              >
+                {showAllHistory ? 'הצג פחות 👆' : `הצג את כל ה-${predictions.length} ניחושים 👇`}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

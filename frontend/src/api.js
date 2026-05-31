@@ -6,6 +6,29 @@ import {
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, firestore } from './firebase';
 
+// Helper to convert 2-letter country code to flag emoji
+const getFlagEmoji = (countryCode) => {
+  if (!countryCode || countryCode.length !== 2) return '';
+  const codePoints = countryCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0));
+  try {
+    return String.fromCodePoint(...codePoints);
+  } catch (e) {
+    return '';
+  }
+};
+
+// Helper to format team name by replacing country code (e.g. "KR") with its flag emoji
+const formatTeamName = (teamName) => {
+  if (!teamName) return '';
+  return teamName.replace(/\b([A-Z]{2})\b/g, (match, countryCode) => {
+    const flag = getFlagEmoji(countryCode);
+    return flag ? flag : match;
+  });
+};
+
 // Helper to handle Firebase errors gracefully
 const tryFirebase = async (firebaseFunc, fallbackFunc) => {
   try {
@@ -196,6 +219,8 @@ export const api = {
           .filter(m => m.isvisable)
           .map(m => ({
             ...m,
+            teamA: formatTeamName(m.teamA),
+            teamB: formatTeamName(m.teamB),
             time: formatTimeLabel(m.startTime),
             status: 'upcoming'
           }));
@@ -217,6 +242,8 @@ export const api = {
           .filter(m => m.isvisable)
           .map(m => ({
             ...m,
+            teamA: formatTeamName(m.teamA),
+            teamB: formatTeamName(m.teamB),
             time: formatTimeLabel(m.startTime),
             status: 'upcoming'
           }));
@@ -226,9 +253,10 @@ export const api = {
 
   getQuestions: async (matchId) => {
     const generateQuestions = () => {
-      const m = ALL_MATCHES.find(x => x.id === matchId) || ALL_MATCHES[0];
-      const ta = m.teamA;
-      const tb = m.teamB;
+      const snapMatches = JSON.parse(localStorage.getItem('gut_matches_v2') || '[]');
+      const m = snapMatches.find(x => x.id === matchId) || ALL_MATCHES.find(x => x.id === matchId) || ALL_MATCHES[0];
+      const ta = formatTeamName(m.teamA);
+      const tb = formatTeamName(m.teamB);
 
       const winnerQ = { id: `${matchId}_q1`, text: 'מי תנצח את המשחק בסוף?', category: 'winner', points: 20, emoji: '🏆', optionA: ta, optionB: tb };
 
@@ -293,7 +321,13 @@ export const api = {
           }
           return uploaded;
         }
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return snap.docs.map(d => {
+          const q = { id: d.id, ...d.data() };
+          if (q.optionA) q.optionA = formatTeamName(q.optionA);
+          if (q.optionB) q.optionB = formatTeamName(q.optionB);
+          if (q.text) q.text = formatTeamName(q.text);
+          return q;
+        });
       },
       () => {
         const allPreds = JSON.parse(localStorage.getItem('gut_preds_v2') || '[]');
@@ -317,7 +351,13 @@ export const api = {
           localStorage.setItem('gut_preds_v2', JSON.stringify(newAllPreds));
           return initial;
         }
-        return filtered;
+        return filtered.map(q => {
+          const qCopy = { ...q };
+          if (qCopy.optionA) qCopy.optionA = formatTeamName(qCopy.optionA);
+          if (qCopy.optionB) qCopy.optionB = formatTeamName(qCopy.optionB);
+          if (qCopy.text) qCopy.text = formatTeamName(qCopy.text);
+          return qCopy;
+        });
       }
     );
   },
@@ -332,6 +372,9 @@ export const api = {
         const preds = [];
         snapA.docs.forEach(docSnap => {
           const q = { id: docSnap.id, ...docSnap.data() };
+          if (q.optionA) q.optionA = formatTeamName(q.optionA);
+          if (q.optionB) q.optionB = formatTeamName(q.optionB);
+          if (q.text) q.text = formatTeamName(q.text);
           preds.push({
             id: `${userId}_${q.id}`,
             userId,
@@ -343,6 +386,9 @@ export const api = {
         });
         snapB.docs.forEach(docSnap => {
           const q = { id: docSnap.id, ...docSnap.data() };
+          if (q.optionA) q.optionA = formatTeamName(q.optionA);
+          if (q.optionB) q.optionB = formatTeamName(q.optionB);
+          if (q.text) q.text = formatTeamName(q.text);
           preds.push({
             id: `${userId}_${q.id}`,
             userId,
@@ -360,14 +406,18 @@ export const api = {
         allPreds.forEach(q => {
           const uA = q.usersA || [];
           const uB = q.usersB || [];
+          const qCopy = { ...q };
+          if (qCopy.optionA) qCopy.optionA = formatTeamName(qCopy.optionA);
+          if (qCopy.optionB) qCopy.optionB = formatTeamName(qCopy.optionB);
+          if (qCopy.text) qCopy.text = formatTeamName(qCopy.text);
           if (uA.includes(userId)) {
             preds.push({
               id: `${userId}_${q.id}`,
               userId,
               questionId: q.id,
               answer: 'A',
-              isCorrect: q.correctAnswer ? (q.correctAnswer === 'A') : null,
-              question: q
+              isCorrect: qCopy.correctAnswer ? (qCopy.correctAnswer === 'A') : null,
+              question: qCopy
             });
           } else if (uB.includes(userId)) {
             preds.push({
@@ -375,8 +425,8 @@ export const api = {
               userId,
               questionId: q.id,
               answer: 'B',
-              isCorrect: q.correctAnswer ? (q.correctAnswer === 'B') : null,
-              question: q
+              isCorrect: qCopy.correctAnswer ? (qCopy.correctAnswer === 'B') : null,
+              question: qCopy
             });
           }
         });
@@ -788,4 +838,57 @@ export const api = {
       }
     );
   }
+};
+
+export const TEAM_CODES = {
+  'מקסיקו': 'mx',
+  'דרום אפריקה': 'za',
+  'קוריאה הדרומית': 'kr',
+  'צ\'כיה': 'cz',
+  'קנדה': 'ca',
+  'בוסניה': 'ba',
+  'ארה"ב': 'us',
+  'פרגוואי': 'py',
+  'קטאר': 'qa',
+  'שוויץ': 'ch',
+  'ברזיל': 'br',
+  'מרוקו': 'ma',
+  'האיטי': 'ht',
+  'סקוטלנד': 'gb-sct',
+  'ארגנטינה': 'ar',
+  'אורוגוואי': 'uy',
+  'צרפת': 'fr',
+  'קולומביה': 'co',
+  'ספרד': 'es',
+  'אקוודור': 'ec',
+  'גרמניה': 'de',
+  'יפן': 'jp',
+  'פורטוגל': 'pt',
+  'סנגל': 'sn',
+  'אנגליה': 'gb-eng',
+  'ניגריה': 'ng',
+  'הולנד': 'nl',
+  'קרואטיה': 'hr',
+  'בלגיה': 'be',
+  'דנמרק': 'dk',
+  'איטליה': 'it',
+  'איראן': 'ir'
+};
+
+export const getTeamFlagUrl = (teamName) => {
+  if (!teamName) return '';
+  const match = teamName.match(/\b([A-Za-z]{2})\b/);
+  if (match) {
+    const code = match[1].toLowerCase();
+    if (code !== 'vs') {
+      return `https://flagcdn.com/w40/${code}.png`;
+    }
+  }
+  const cleanName = teamName.replace(/[A-Za-z0-9]/g, '').trim().split(/\s+/)[0];
+  for (const [key, val] of Object.entries(TEAM_CODES)) {
+    if (cleanName.includes(key) || key.includes(cleanName)) {
+      return `https://flagcdn.com/w40/${val}.png`;
+    }
+  }
+  return '';
 };

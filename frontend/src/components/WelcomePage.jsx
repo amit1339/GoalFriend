@@ -1,3 +1,4 @@
+import logo from '../assets/logo.png';
 import { useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 
@@ -14,7 +15,7 @@ export default function WelcomePage({ onRegister }) {
 
   return (
     <div className="welcome-page">
-      <img src="/logo.png" alt="GoalFriend Logo" className="welcome-logo" />
+      <img src={logo} alt="GoalFriend Logo" className="welcome-logo" />
       <h1 className="welcome-title">GoalFriend</h1>
       <p className="welcome-subtitle">
         המשחק החברתי של המונדיאל!

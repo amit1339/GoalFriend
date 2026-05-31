@@ -225,9 +225,12 @@ body {
   text-align: center;
   line-height: 1.4;
 }
-.swipe-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.swipe-btn.option-a:hover { border-color: var(--primary); background: rgba(108, 92, 231, 0.08); color: var(--primary); }
-.swipe-btn.option-b:hover { border-color: var(--secondary); background: rgba(255, 107, 107, 0.08); color: var(--secondary); }
+@media (hover: hover) {
+  .swipe-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .swipe-btn.option-a:hover { border-color: var(--primary); background: rgba(108, 92, 231, 0.08); color: var(--primary); }
+  .swipe-btn.option-b:hover { border-color: var(--secondary); background: rgba(255, 107, 107, 0.08); color: var(--secondary); }
+}
+.swipe-btn:active { transform: scale(0.97); }
 .swipe-btn.selected-a { border-color: var(--primary); background: rgba(108, 92, 231, 0.12); color: var(--primary); transform: scale(1.03); }
 .swipe-btn.selected-b { border-color: var(--secondary); background: rgba(255, 107, 107, 0.12); color: var(--secondary); transform: scale(1.03); }
 
