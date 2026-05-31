@@ -1,6 +1,6 @@
 import { 
   collection, doc, getDoc, getDocs, setDoc, updateDoc, 
-  query, where, addDoc, arrayUnion
+  query, where, addDoc, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
@@ -177,34 +177,38 @@ export const api = {
       const ta = m.teamA;
       const tb = m.teamB;
 
-      const winnerQ = { id: `${matchId}_q_win`, text: 'מי תנצח את המשחק בסוף?', category: 'winner', points: 20, emoji: '🏆', optionA: ta, optionB: tb };
+      const winnerQ = { id: `${matchId}_q1`, text: 'מי תנצח את המשחק בסוף?', category: 'winner', points: 20, emoji: '🏆', optionA: ta, optionB: tb };
 
       const pool = [
-        { id: `${matchId}_q1`, text: 'מי תכבוש ראשונה?', category: 'goals', points: 10, emoji: '⚽', optionA: ta, optionB: tb },
-        { id: `${matchId}_q2`, text: 'האם יהיו מעל 2.5 שערים במשחק?', category: 'goals', points: 10, emoji: '🔥', optionA: 'ברור!', optionB: 'ממש לא' },
-        { id: `${matchId}_q3`, text: 'האם שופט ה-VAR יפסול שער?', category: 'drama', points: 15, emoji: '📺', optionA: 'כן, בדוק', optionB: 'המשחק יזרום' },
-        { id: `${matchId}_q4`, text: 'איזה קהל יעשה יותר רעש?', category: 'fans', points: 5, emoji: '🏟️', optionA: `האוהדים של ${ta}`, optionB: `האוהדים של ${tb}` },
-        { id: `${matchId}_q5`, text: 'מי תספוג יותר כרטיסים צהובים?', category: 'cards', points: 10, emoji: '🟨', optionA: ta, optionB: tb },
-        { id: `${matchId}_q6`, text: 'האם נראה כרטיס אדום במשחק?', category: 'cards', points: 20, emoji: '🟥', optionA: 'כן, משחק אגרסיבי', optionB: 'לא יהיה אדום' },
-        { id: `${matchId}_q7`, text: 'מי תרוץ יותר קילומטרים?', category: 'stats', points: 10, emoji: '🏃', optionA: ta, optionB: tb },
-        { id: `${matchId}_q8`, text: 'האם יובקע שער ב-15 הדקות הראשונות?', category: 'time', points: 15, emoji: '⏱️', optionA: 'כן, פתיחה סוערת', optionB: 'לא, יתחילו רגוע' },
-        { id: `${matchId}_q9`, text: 'האם נראה פנדל מוחמץ?', category: 'drama', points: 25, emoji: '🥅', optionA: 'כן!', optionB: 'אין סיכוי' },
-        { id: `${matchId}_q10`, text: 'איזו קבוצה תיראה יותר לחוצה במחצית הראשונה?', category: 'gut', points: 10, emoji: '🧠', optionA: ta, optionB: tb },
-        { id: `${matchId}_q11`, text: 'מי המאמן שיתעצבן ראשון על השופט?', category: 'gut', points: 10, emoji: '😤', optionA: `המאמן של ${ta}`, optionB: `המאמן של ${tb}` },
-        { id: `${matchId}_q12`, text: 'האם שחקן מחליף יכבוש שער?', category: 'players', points: 15, emoji: '🔄', optionA: 'כן, חילוף מנצח', optionB: 'לא' },
-        { id: `${matchId}_q13`, text: 'האם יובקע שער בתוספת הזמן (דקה 90+)?', category: 'drama', points: 20, emoji: '⏳', optionA: 'דרמה בסיום!', optionB: 'לא' },
-        { id: `${matchId}_q14`, text: 'מי תחזיק יותר בכדור (פוזשן)?', category: 'stats', points: 10, emoji: '📊', optionA: ta, optionB: tb },
-        { id: `${matchId}_q15`, text: 'האם נראה שער בבעיטה חופשית ישירה?', category: 'magic', points: 20, emoji: '✨', optionA: 'שער לחיבורים!', optionB: 'לא' },
-        { id: `${matchId}_q16`, text: 'מי תבצע יותר עבירות?', category: 'cards', points: 10, emoji: '⚔️', optionA: ta, optionB: tb },
-        { id: `${matchId}_q17`, text: 'האם המשחק יסתיים בתיקו?', category: 'winner', points: 15, emoji: '🤝', optionA: 'כן, יגמר שוויון', optionB: 'תהיה הכרעה' }
+        { text: 'מי תכבוש ראשונה?', category: 'goals', points: 10, emoji: '⚽', optionA: ta, optionB: tb },
+        { text: 'האם יהיו מעל 2.5 שערים במשחק?', category: 'goals', points: 10, emoji: '🔥', optionA: 'ברור!', optionB: 'ממש לא' },
+        { text: 'האם שופט ה-VAR יפסול שער?', category: 'drama', points: 15, emoji: '📺', optionA: 'כן, בדוק', optionB: 'המשחק יזרום' },
+        { text: 'איזה קהל יעשה יותר רעש?', category: 'fans', points: 5, emoji: '🏟️', optionA: `האוהדים של ${ta}`, optionB: `האוהדים של ${tb}` },
+        { text: 'מי תספוג יותר כרטיסים צהובים?', category: 'cards', points: 10, emoji: '🟨', optionA: ta, optionB: tb },
+        { text: 'האם נראה כרטיס אדום במשחק?', category: 'cards', points: 20, emoji: '🟥', optionA: 'כן, משחק אגרסיבי', optionB: 'לא יהיה אדום' },
+        { text: 'מי תרוץ יותר קילומטרים?', category: 'stats', points: 10, emoji: '🏃', optionA: ta, optionB: tb },
+        { text: 'האם יובקע שער ב-15 הדקות הראשונות?', category: 'time', points: 15, emoji: '⏱️', optionA: 'כן, פתיחה סוערת', optionB: 'לא, יתחילו רגוע' },
+        { text: 'האם נראה פנדל מוחמץ?', category: 'drama', points: 25, emoji: '🥅', optionA: 'כן!', optionB: 'אין סיכוי' },
+        { text: 'איזו קבוצה תיראה יותר לחוצה במחצית הראשונה?', category: 'gut', points: 10, emoji: '🧠', optionA: ta, optionB: tb },
+        { text: 'מי המאמן שיתעצבן ראשון על השופט?', category: 'gut', points: 10, emoji: '😤', optionA: `המאמן של ${ta}`, optionB: `המאמן של ${tb}` },
+        { text: 'האם שחקן מחליף יכבוש שער?', category: 'players', points: 15, emoji: '🔄', optionA: 'כן, חילוף מנצח', optionB: 'לא' },
+        { text: 'האם יובקע שער בתוספת הזמן (דקה 90+)?', category: 'drama', points: 20, emoji: '⏳', optionA: 'דרמה בסיום!', optionB: 'לא' },
+        { text: 'מי תחזיק יותר בכדור (פוזשן)?', category: 'stats', points: 10, emoji: '📊', optionA: ta, optionB: tb },
+        { text: 'האם נראה שער בבעיטה חופשית ישירה?', category: 'magic', points: 20, emoji: '✨', optionA: 'שער לחיבורים!', optionB: 'לא' },
+        { text: 'מי תבצע יותר עבירות?', category: 'cards', points: 10, emoji: '⚔️', optionA: ta, optionB: tb },
+        { text: 'האם המשחק יסתיים בתיקו?', category: 'winner', points: 15, emoji: '🤝', optionA: 'כן, יגמר שוויון', optionB: 'תהיה הכרעה' }
       ];
 
       // Seed random choice based on matchId to keep questions stable on reload
       const hash = parseInt(matchId.replace(/\D/g, '') || '1');
       const selected = [];
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 5; i++) {
         const index = (hash * 7 + i * 5) % pool.length;
-        selected.push(pool[index]);
+        const qItem = pool[index];
+        selected.push({
+          ...qItem,
+          id: `${matchId}_q${i + 2}`
+        });
       }
 
       return [winnerQ, ...selected];
@@ -212,15 +216,55 @@ export const api = {
 
     return tryFirebase(
       async () => {
-        const q = query(collection(firestore, 'questions'), where('matchId', '==', matchId));
+        const q = query(collection(firestore, 'predictions'), where('matchId', '==', matchId));
         const snap = await getDocs(q);
         if (snap.empty) {
-          return generateQuestions();
+          const generated = generateQuestions();
+          const uploaded = [];
+          for (const item of generated) {
+            const questionData = {
+              id: item.id,
+              matchId,
+              text: item.text,
+              category: item.category,
+              points: item.points,
+              emoji: item.emoji,
+              optionA: item.optionA,
+              optionB: item.optionB,
+              usersA: [],
+              usersB: [],
+              correctAnswer: ""
+            };
+            await setDoc(doc(firestore, 'predictions', item.id), questionData);
+            uploaded.push(questionData);
+          }
+          return uploaded;
         }
         return snap.docs.map(d => ({ id: d.id, ...d.data() }));
       },
       () => {
-        return generateQuestions();
+        const allPreds = JSON.parse(localStorage.getItem('gut_preds_v2') || '[]');
+        const filtered = allPreds.filter(q => q.matchId === matchId);
+        if (filtered.length === 0) {
+          const generated = generateQuestions();
+          const initial = generated.map(item => ({
+            id: item.id,
+            matchId,
+            text: item.text,
+            category: item.category,
+            points: item.points,
+            emoji: item.emoji,
+            optionA: item.optionA,
+            optionB: item.optionB,
+            usersA: [],
+            usersB: [],
+            correctAnswer: ""
+          }));
+          const newAllPreds = [...allPreds, ...initial];
+          localStorage.setItem('gut_preds_v2', JSON.stringify(newAllPreds));
+          return initial;
+        }
+        return filtered;
       }
     );
   },
@@ -228,21 +272,73 @@ export const api = {
   getPredictions: async (userId) => {
     return tryFirebase(
       async () => {
-        const q = query(collection(firestore, 'predictions'), where('userId', '==', userId));
-        const snap = await getDocs(q);
-        return snap.docs.map(d => d.data());
+        const qA = query(collection(firestore, 'predictions'), where('usersA', 'array-contains', userId));
+        const qB = query(collection(firestore, 'predictions'), where('usersB', 'array-contains', userId));
+        const [snapA, snapB] = await Promise.all([getDocs(qA), getDocs(qB)]);
+        
+        const preds = [];
+        snapA.docs.forEach(docSnap => {
+          const q = { id: docSnap.id, ...docSnap.data() };
+          preds.push({
+            id: `${userId}_${q.id}`,
+            userId,
+            questionId: q.id,
+            answer: 'A',
+            isCorrect: q.correctAnswer ? (q.correctAnswer === 'A') : null,
+            question: q
+          });
+        });
+        snapB.docs.forEach(docSnap => {
+          const q = { id: docSnap.id, ...docSnap.data() };
+          preds.push({
+            id: `${userId}_${q.id}`,
+            userId,
+            questionId: q.id,
+            answer: 'B',
+            isCorrect: q.correctAnswer ? (q.correctAnswer === 'B') : null,
+            question: q
+          });
+        });
+        return preds;
       },
       () => {
-        return JSON.parse(localStorage.getItem('gut_preds') || '[]');
+        const allPreds = JSON.parse(localStorage.getItem('gut_preds_v2') || '[]');
+        const preds = [];
+        allPreds.forEach(q => {
+          const uA = q.usersA || [];
+          const uB = q.usersB || [];
+          if (uA.includes(userId)) {
+            preds.push({
+              id: `${userId}_${q.id}`,
+              userId,
+              questionId: q.id,
+              answer: 'A',
+              isCorrect: q.correctAnswer ? (q.correctAnswer === 'A') : null,
+              question: q
+            });
+          } else if (uB.includes(userId)) {
+            preds.push({
+              id: `${userId}_${q.id}`,
+              userId,
+              questionId: q.id,
+              answer: 'B',
+              isCorrect: q.correctAnswer ? (q.correctAnswer === 'B') : null,
+              question: q
+            });
+          }
+        });
+        return preds;
       }
     );
   },
 
   getUnanswered: async (userId, matchId) => {
     const questions = await api.getQuestions(matchId);
-    const predictions = await api.getPredictions(userId);
-    const answeredIds = predictions.map(p => p.questionId);
-    return questions.filter(q => !answeredIds.includes(q.id));
+    return questions.filter(q => {
+      const uA = q.usersA || [];
+      const uB = q.usersB || [];
+      return !uA.includes(userId) && !uB.includes(userId);
+    });
   },
 
   getAllQuestions: async (userId) => {
@@ -263,16 +359,43 @@ export const api = {
   },
 
   submitPrediction: async (userId, questionId, answer) => {
-    const predId = `${userId}_${questionId}`;
     return tryFirebase(
       async () => {
-        await setDoc(doc(firestore, 'predictions', predId), { userId, questionId, answer });
+        const qRef = doc(firestore, 'predictions', questionId);
+        if (answer === 'A') {
+          await updateDoc(qRef, {
+            usersA: arrayUnion(userId),
+            usersB: arrayRemove(userId)
+          });
+        } else {
+          await updateDoc(qRef, {
+            usersB: arrayUnion(userId),
+            usersA: arrayRemove(userId)
+          });
+        }
         return { success: true };
       },
       () => {
-        const preds = JSON.parse(localStorage.getItem('gut_preds') || '[]');
-        preds.push({ questionId, answer });
-        localStorage.setItem('gut_preds', JSON.stringify(preds));
+        const allPreds = JSON.parse(localStorage.getItem('gut_preds_v2') || '[]');
+        const qIndex = allPreds.findIndex(q => q.id === questionId);
+        if (qIndex > -1) {
+          const q = allPreds[qIndex];
+          const uA = q.usersA || [];
+          const uB = q.usersB || [];
+          if (answer === 'A') {
+            if (!uA.includes(userId)) uA.push(userId);
+            const bIdx = uB.indexOf(userId);
+            if (bIdx > -1) uB.splice(bIdx, 1);
+          } else {
+            if (!uB.includes(userId)) uB.push(userId);
+            const aIdx = uA.indexOf(userId);
+            if (aIdx > -1) uA.splice(aIdx, 1);
+          }
+          q.usersA = uA;
+          q.usersB = uB;
+          allPreds[qIndex] = q;
+          localStorage.setItem('gut_preds_v2', JSON.stringify(allPreds));
+        }
         return { success: true };
       }
     );
@@ -395,6 +518,142 @@ export const api = {
         return { rank, totalScore: user.score || 0, accuracy, streak: user.streak || 0, totalPredictions };
       },
       () => ({ rank: 1, totalScore: 0, accuracy: 0, streak: 0, totalPredictions: 0 })
+    );
+  },
+
+  resolveQuestion: async (questionId, correctAnswer) => {
+    return tryFirebase(
+      async () => {
+        const qRef = doc(firestore, 'predictions', questionId);
+        const qSnap = await getDoc(qRef);
+        if (!qSnap.exists()) throw new Error('Question not found');
+        const qData = qSnap.data();
+        const prevAnswer = qData.correctAnswer || "";
+        const points = qData.points || 0;
+        const usersA = qData.usersA || [];
+        const usersB = qData.usersB || [];
+
+        if (prevAnswer === correctAnswer) return { success: true, message: 'No change' };
+
+        // 1. Revert previous resolution if it existed
+        if (prevAnswer === 'A' || prevAnswer === 'B') {
+          const winners = prevAnswer === 'A' ? usersA : usersB;
+          const losers = prevAnswer === 'A' ? usersB : usersA;
+
+          for (const uid of winners) {
+            const uRef = doc(firestore, 'users', uid);
+            const uSnap = await getDoc(uRef);
+            if (uSnap.exists()) {
+              const uData = uSnap.data();
+              await updateDoc(uRef, {
+                score: Math.max(0, (uData.score || 0) - points),
+                correct: Math.max(0, (uData.correct || 0) - 1),
+                total: Math.max(0, (uData.total || 0) - 1),
+                streak: Math.max(0, (uData.streak || 0) - 1)
+              });
+            }
+          }
+          for (const uid of losers) {
+            const uRef = doc(firestore, 'users', uid);
+            const uSnap = await getDoc(uRef);
+            if (uSnap.exists()) {
+              const uData = uSnap.data();
+              await updateDoc(uRef, {
+                total: Math.max(0, (uData.total || 0) - 1)
+              });
+            }
+          }
+        }
+
+        // 2. Apply new resolution
+        await updateDoc(qRef, { correctAnswer });
+
+        if (correctAnswer === 'A' || correctAnswer === 'B') {
+          const winners = correctAnswer === 'A' ? usersA : usersB;
+          const losers = correctAnswer === 'A' ? usersB : usersA;
+
+          for (const uid of winners) {
+            const uRef = doc(firestore, 'users', uid);
+            const uSnap = await getDoc(uRef);
+            if (uSnap.exists()) {
+              const uData = uSnap.data();
+              await updateDoc(uRef, {
+                score: (uData.score || 0) + points,
+                correct: (uData.correct || 0) + 1,
+                total: (uData.total || 0) + 1,
+                streak: (uData.streak || 0) + 1
+              });
+            }
+          }
+          for (const uid of losers) {
+            const uRef = doc(firestore, 'users', uid);
+            const uSnap = await getDoc(uRef);
+            if (uSnap.exists()) {
+              const uData = uSnap.data();
+              await updateDoc(uRef, {
+                total: (uData.total || 0) + 1,
+                streak: 0
+              });
+            }
+          }
+        }
+
+        return { success: true };
+      },
+      () => {
+        const allPreds = JSON.parse(localStorage.getItem('gut_preds_v2') || '[]');
+        const qIndex = allPreds.findIndex(x => x.id === questionId);
+        if (qIndex === -1) throw new Error('Question not found');
+        const qData = allPreds[qIndex];
+        const prevAnswer = qData.correctAnswer || "";
+        const points = qData.points || 0;
+        const usersA = qData.usersA || [];
+        const usersB = qData.usersB || [];
+
+        if (prevAnswer === correctAnswer) return { success: true, message: 'No change' };
+
+        const localUser = JSON.parse(localStorage.getItem('gut_or_heart_user') || localStorage.getItem('gut_heart_user') || '{}');
+        const userId = localUser.id;
+
+        if (userId) {
+          // Revert previous
+          if (prevAnswer === 'A' || prevAnswer === 'B') {
+            const isWinner = prevAnswer === 'A' ? usersA.includes(userId) : usersB.includes(userId);
+            const isLoser = prevAnswer === 'A' ? usersB.includes(userId) : usersA.includes(userId);
+            if (isWinner) {
+              localUser.score = Math.max(0, (localUser.score || 0) - points);
+              localUser.correct = Math.max(0, (localUser.correct || 0) - 1);
+              localUser.total = Math.max(0, (localUser.total || 0) - 1);
+              localUser.streak = Math.max(0, (localUser.streak || 0) - 1);
+            } else if (isLoser) {
+              localUser.total = Math.max(0, (localUser.total || 0) - 1);
+            }
+          }
+
+          // Apply new
+          if (correctAnswer === 'A' || correctAnswer === 'B') {
+            const isWinner = correctAnswer === 'A' ? usersA.includes(userId) : usersB.includes(userId);
+            const isLoser = correctAnswer === 'A' ? usersB.includes(userId) : usersA.includes(userId);
+            if (isWinner) {
+              localUser.score = (localUser.score || 0) + points;
+              localUser.correct = (localUser.correct || 0) + 1;
+              localUser.total = (localUser.total || 0) + 1;
+              localUser.streak = (localUser.streak || 0) + 1;
+            } else if (isLoser) {
+              localUser.total = (localUser.total || 0) + 1;
+              localUser.streak = 0;
+            }
+          }
+
+          localStorage.setItem('gut_or_heart_user', JSON.stringify(localUser));
+          localStorage.setItem('gut_heart_user', JSON.stringify(localUser));
+        }
+
+        qData.correctAnswer = correctAnswer;
+        allPreds[qIndex] = qData;
+        localStorage.setItem('gut_preds_v2', JSON.stringify(allPreds));
+        return { success: true };
+      }
     );
   }
 };

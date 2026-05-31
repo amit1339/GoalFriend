@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FcGoogle } from 'react-icons/fc';
 
 const AVATARS = ['😎', '🤩', '🥳', '😜', '🤠', '🦁', '🐯', '🦊', '🐸', '🎃', '👻', '🤖', '👑', '⚡', '🔥', '💎'];
 
@@ -30,7 +31,7 @@ export default function WelcomePage({ onRegister }) {
           disabled={loading}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: 'white', color: '#333' }}
         >
-          <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" style={{ width: 24, height: 24 }} />
+          <FcGoogle style={{ width: 24, height: 24 }} />
           {loading ? 'מתחבר...' : 'התחבר עם Google'}
         </button>
       </div>
